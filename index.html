@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GeoMaster Pro</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+  <style>
+    :root {
+      --bg: #090a0f;
+      --panel: rgba(22, 27, 34, 0.75);
+      --border: rgba(255, 255, 255, 0.12);
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --correct: #10b981;
+      --wrong: #ef4444;
+      --neutral-land: #1e293b;
+      --neutral-border: #475569;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg); color: var(--text); }
+    
+    #app-container { width: 100vw; height: 100vh; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+    #map-svg { width: 100%; height: 100%; cursor: grab; }
+    #map-svg:active { cursor: grabbing; }
+
+    /* Glass Panels */
+    .glass {
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    }
+
+    /* Top HUD */
+    #hud {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 92%;
+      max-width: 850px;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      z-index: 10;
+      transition: all 0.3s;
+    }
+    .hud-target { display: flex; flex-direction: column; align-items: flex-start; min-width: 200px; }
+    .target-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); font-weight: 700; }
+    .target-name { font-size: 24px; font-weight: 800; color: #fff; text-shadow: 0 2px 10px rgba(56,189,248,0.3); }
+    .hud-stats { display: flex; gap: 20px; font-variant-numeric: tabular-nums; }
+    .stat-box { display: flex; flex-direction: column; align-items: center; }
+    .stat-title { font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+    .stat-val { font-size: 18px; font-weight: 700; }
+
+    /* Map Controls */
+    .controls {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+    .ctrl-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.2s;
+    }
+    .ctrl-btn:hover { background: rgba(255,255,255,0.15); transform: translateY(-2px); }
+
+    /* Menu / Modal */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal {
+      width: 100%;
+      max-width: 480px;
+      padding: 36px 32px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .modal h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+    .modal select, .modal button {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 15px;
+      outline: none;
+    }
+    .modal select { background: #161b22; color: #fff; }
+    .btn-primary {
+      background: #38bdf8;
+      color: #04121e;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: 0.2s;
+    }
+    .btn-primary:hover { background: #7dd3fc; }
+    .btn-secondary { background: transparent; color: #fff; cursor: pointer; border: 1px solid var(--border); }
+
+    /* Map Paths */
+    path.feature {
+      fill: var(--neutral-land);
+      stroke: var(--neutral-border);
+      stroke-width: 0.75px;
+      transition: fill 0.2s, stroke 0.2s;
+      cursor: pointer;
+    }
+    path.feature:hover:not(.guessed):not(.flash) {
+      fill: #334155;
+    }
+    path.guessed { fill: var(--correct) !important; stroke: #059669; }
+    path.error-click { fill: var(--wrong) !important; }
+    path.pulse-target {
+      fill: #38bdf8 !important;
+      animation: pulseAnim 0.7s infinite alternate;
+    }
+    @keyframes pulseAnim {
+      from { fill: #38bdf8; }
+      to { fill: #10b981; }
+    }
+
+    #tooltip {
+      position: absolute;
+      padding: 6px 12px;
+      font-size: 12px;
+      pointer-events: none;
+      display: none;
+      z-index: 50;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container">
+    <div id="hud" class="glass" style="display: none;">
+      <div class="hud-target">
+        <span class="target-label">Trova:</span>
+        <span id="target-name" class="target-name">---</span>
+      </div>
+      <div class="hud-stats">
+        <div class="stat-box">
+          <span class="stat-title">Tempo</span>
+          <span id="timer" class="stat-val">00:00</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-title">Trovati</span>
+          <span id="counter" class="stat-val">0 / 0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-title">Errori</span>
+          <span id="errors" class="stat-val">0</span>
+        </div>
+      </div>
+      <button class="ctrl-btn" onclick="toggleMenu()" title="Menu">✕</button>
+    </div>
+
+    <svg id="map-svg"><g id="map-layer"></g></svg>
+
+    <div class="controls">
+      <button class="ctrl-btn" onclick="zoomIn()">+</button>
+      <button class="ctrl-btn" onclick="zoomOut()">−</button>
+      <button class="ctrl-btn" onclick="resetZoom()">⟲</button>
+    </div>
+
+    <!-- Modal Selezioni -->
+    <div id="menu-modal" class="modal-overlay">
+      <div class="modal glass">
+        <h1>GeoMaster</h1>
+        <p style="color: var(--text-muted); font-size: 14px;">Metti alla prova la tua memoria geografica cliccando direttamente sui territori.</p>
+        <select id="region-select">
+          <option value="usa">50 Stati Americani (USA)</option>
+          <option value="europe">Europa</option>
+          <option value="africa">Africa</option>
+          <option value="asia">Asia</option>
+          <option value="americas">Americhe</option>
+          <option value="world">Tutto il Mondo</option>
+        </select>
+        <button class="btn-primary" onclick="startGame()">INIZIA PARTITA</button>
+      </div>
+    </div>
+
+    <!-- Modal Fine Partita -->
+    <div id="end-modal" class="modal-overlay" style="display: none;">
+      <div class="modal glass">
+        <h2>Ben fatto!</h2>
+        <p id="summary-text" style="color: var(--text-muted); font-size: 15px;"></p>
+        <button class="btn-primary" onclick="startGame()">Rigioca</button>
+        <button class="btn-secondary" onclick="toggleMenu()">Menu Principale</button>
+      </div>
+    </div>
+
+    <div id="tooltip" class="glass"></div>
+  </div>
+
+  <script>
+    const svg = d3.select("#map-svg");
+    const g = d3.select("#map-layer");
+    let zoomBehavior;
+    let currentData = [];
+    let pendingTargets = [];
+    let currentTarget = null;
+    let guessedCount = 0;
+    let errorsCount = 0;
+    let firstTryHits = 0;
+    let isWaiting = false;
+    let startTime = 0;
+    let timerInterval = null;
+
+    const DATASETS = {
+      usa: { url: "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json", type: "topo_usa" },
+      world: { url: "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json", type: "topo_world" }
+    };
+
+    // Dati e ID ISO per filtrare i continenti
+    const CONTINENT_FILTERS = {
+      europe: ["008","020","040","056","100","191","196","203","208","233","246","250","276","300","348","352","372","380","428","440","442","470","528","578","616","620","642","703","705","724","752","756","804","826"],
+      africa: ["012","024","204","072","120","140","148","174","178","180","262","818","226","232","231","266","270","288","324","624","384","404","426","430","434","450","454","466","478","480","504","508","516","562","566","646","678","686","690","694","706","710","728","729","748","768","788","800","834","894","716"],
+      asia: ["004","051","031","048","050","064","096","116","156","196","268","360","364","368","376","392","400","410","414","417","418","422","458","496","524","512","682","764","760","792","795","860","704","887"],
+      americas: ["028","032","044","068","076","124","152","170","188","192","214","218","222","238","242","254","308","312","320","328","332","340","388","474","484","500","558","591","600","604","630","659","662","670","740","780","796","840","858","862"]
+    };
+
+    const STATE_NAMES = {
+      "01":"Alabama","02":"Alaska","04":"Arizona","05":"Arkansas","06":"California","08":"Colorado","09":"Connecticut","10":"Delaware","12":"Florida","13":"Georgia","15":"Hawaii","16":"Idaho","17":"Illinois","18":"Indiana","19":"Iowa","20":"Kansas","21":"Kentucky","22":"Louisiana","23":"Maine","24":"Maryland","25":"Massachusetts","26":"Michigan","27":"Minnesota","28":"Mississippi","29":"Missouri","30":"Montana","31":"Nebraska","32":"Nevada","33":"New Hampshire","34":"New Jersey","35":"New Mexico","36":"New York","37":"North Carolina","38":"North Dakota","39":"Ohio","40":"Oklahoma","41":"Oregon","42":"Pennsylvania","44":"Rhode Island","45":"South Carolina","46":"South Dakota","47":"Tennessee","48":"Texas","49":"Utah","50":"Vermont","51":"Virginia","53":"Washington","54":"West Virginia","55":"Wisconsin","56":"Wyoming"
+    };
+
+    let countryNameMap = {};
+    fetch("https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.json")
+      .then(res => res.json())
+      .then(d => d.forEach(c => countryNameMap[c["country-code"]] = c.name));
+
+    function initZoom() {
+      zoomBehavior = d3.zoom().scaleExtent([0.8, 12]).on("zoom", (e) => g.attr("transform", e.transform));
+      svg.call(zoomBehavior);
+    }
+    initZoom();
+
+    function zoomIn() { svg.transition().call(zoomBehavior.scaleBy, 1.4); }
+    function zoomOut() { svg.transition().call(zoomBehavior.scaleBy, 0.7); }
+    function resetZoom() { svg.transition().call(zoomBehavior.transform, d3.zoomIdentity); }
+
+    function toggleMenu() {
+      clearInterval(timerInterval);
+      document.getElementById("hud").style.display = "none";
+      document.getElementById("end-modal").style.display = "none";
+      document.getElementById("menu-modal").style.display = "flex";
+    }
+
+    async function startGame() {
+      const region = document.getElementById("region-select").value;
+      document.getElementById("menu-modal").style.display = "none";
+      document.getElementById("end-modal").style.display = "none";
+      document.getElementById("hud").style.display = "flex";
+
+      errorsCount = 0;
+      guessedCount = 0;
+      firstTryHits = 0;
+      updateStats();
+
+      const { width, height } = svg.node().getBoundingClientRect();
+      g.selectAll("*").remove();
+
+      let geoData, projection, pathGen;
+
+      if (region === "usa") {
+        const topo = await d3.json(DATASETS.usa.url);
+        geoData = topojson.feature(topo, topo.objects.states).features
+          .filter(d => STATE_NAMES[d.id])
+          .map(d => ({ ...d, name: STATE_NAMES[d.id] }));
+        projection = d3.geoAlbersUsa().fitSize([width, height], { type: "FeatureCollection", features: geoData });
+      } else {
+        const topo = await d3.json(DATASETS.world.url);
+        let features = topojson.feature(topo, topo.objects.countries).features
+          .map(d => ({ ...d, name: countryNameMap[d.id] || `Stato ${d.id}` }));
+        
+        if (CONTINENT_FILTERS[region]) {
+          const list = CONTINENT_FILTERS[region];
+          features = features.filter(d => list.includes(d.id));
+        }
+        geoData = features;
+        projection = d3.geoMercator().fitSize([width, height], { type: "FeatureCollection", features: geoData });
+      }
+
+      pathGen = d3.geoPath().projection(projection);
+      currentData = geoData;
+      pendingTargets = [...geoData];
+
+      g.selectAll("path")
+        .data(geoData)
+        .enter()
+        .append("path")
+        .attr("d", pathGen)
+        .attr("class", "feature")
+        .attr("id", d => `geo-${d.id}`)
+        .on("click", (e, d) => handleMapClick(d))
+        .on("mousemove", (e, d) => handleTooltip(e, d))
+        .on("mouseleave", hideTooltip);
+
+      resetZoom();
+      pickNextTarget();
+      startTimer();
+    }
+
+    function pickNextTarget() {
+      if (pendingTargets.length === 0) return endGame();
+      const idx = Math.floor(Math.random() * pendingTargets.length);
+      currentTarget = pendingTargets[idx];
+      document.getElementById("target-name").innerText = currentTarget.name;
+    }
+
+    function handleMapClick(d) {
+      if (isWaiting || !currentTarget) return;
+      const el = d3.select(`#geo-${d.id}`);
+      if (el.classed("guessed")) return;
+
+      if (d.id === currentTarget.id) {
+        el.classed("guessed", true);
+        guessedCount++;
+        firstTryHits++;
+        pendingTargets = pendingTargets.filter(item => item.id !== d.id);
+        updateStats();
+        pickNextTarget();
+      } else {
+        isWaiting = true;
+        errorsCount++;
+        updateStats();
+        el.classed("error-click", true);
+        const targetEl = d3.select(`#geo-${currentTarget.id}`);
+        targetEl.classed("pulse-target", true);
+
+        setTimeout(() => {
+          el.classed("error-click", false);
+          targetEl.classed("pulse-target", false);
+          isWaiting = false;
+          pickNextTarget();
+        }, 1800);
+      }
+    }
+
+    function updateStats() {
+      document.getElementById("counter").innerText = `${guessedCount} / ${currentData.length}`;
+      document.getElementById("errors").innerText = errorsCount;
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const sec = Math.floor((Date.now() - startTime) / 1000);
+        const m = String(Math.floor(sec / 60)).padStart(2, "0");
+        const s = String(sec % 60).padStart(2, "0");
+        document.getElementById("timer").innerText = `${m}:${s}`;
+      }, 1000);
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      const totalTime = document.getElementById("timer").innerText;
+      const precision = Math.round((firstTryHits / (firstTryHits + errorsCount || 1)) * 100);
+      document.getElementById("summary-text").innerHTML = 
+        `Tempo totale: <b>${totalTime}</b><br>Errori: <b>${errorsCount}</b><br>Precisione al primo colpo: <b>${precision}%</b>`;
+      document.getElementById("end-modal").style.display = "flex";
+    }
+
+    function handleTooltip(e, d) {
+      const el = d3.select(`#geo-${d.id}`);
+      if (el.classed("guessed")) {
+        const tooltip = document.getElementById("tooltip");
+        tooltip.innerText = d.name;
+        tooltip.style.left = `${e.clientX + 10}px`;
+        tooltip.style.top = `${e.clientY - 25}px`;
+        tooltip.style.display = "block";
+      }
+    }
+    function hideTooltip() { document.getElementById("tooltip").style.display = "none"; }
+  </script>
+</body>
+</html>

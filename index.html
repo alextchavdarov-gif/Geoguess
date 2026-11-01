@@ -1,30 +1,60 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>GeoMaster Pro</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://unpkg.com/topojson-client@3"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
   <style>
     :root {
       --bg: #090a0f;
-      --panel: rgba(22, 27, 34, 0.75);
+      --panel: rgba(22, 27, 34, 0.85);
       --border: rgba(255, 255, 255, 0.12);
       --accent: #38bdf8;
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --correct: #10b981;
       --wrong: #ef4444;
+      --hint-blue: #00d4ff;
       --neutral-land: #1e293b;
       --neutral-border: #475569;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-    body, html { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg); color: var(--text); }
-    
-    #app-container { width: 100vw; height: 100vh; position: relative; overflow: hidden; display: flex; flex-direction: column; }
-    #map-svg { width: 100%; height: 100%; cursor: grab; }
-    #map-svg:active { cursor: grabbing; }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    #app-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #map-svg {
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    #map-svg:active {
+      cursor: grabbing;
+    }
 
     /* Glass Panels */
     .glass {
@@ -32,378 +62,570 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+      border-radius: 14px;
     }
 
     /* Top HUD */
-    #hud {
+    #hud-top {
       position: absolute;
-      top: 16px;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 18px;
+      z-index: 20;
+    }
+
+    .hud-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-hud {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-hud:hover {
+      background: rgba(255, 255, 255, 0.16);
+      transform: translateY(-1px);
+    }
+
+    #target-container {
+      position: absolute;
+      top: 76px;
       left: 50%;
       transform: translateX(-50%);
-      width: 92%;
-      max-width: 850px;
-      padding: 12px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
+      padding: 12px 28px;
+      text-align: center;
       z-index: 10;
-      transition: all 0.3s;
+      pointer-events: none;
     }
-    .hud-target { display: flex; flex-direction: column; align-items: flex-start; min-width: 200px; }
-    .target-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); font-weight: 700; }
-    .target-name { font-size: 24px; font-weight: 800; color: #fff; text-shadow: 0 2px 10px rgba(56,189,248,0.3); }
-    .hud-stats { display: flex; gap: 20px; font-variant-numeric: tabular-nums; }
-    .stat-box { display: flex; flex-direction: column; align-items: center; }
-    .stat-title { font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
-    .stat-val { font-size: 18px; font-weight: 700; }
 
-    /* Map Controls */
-    .controls {
-      position: absolute;
-      bottom: 24px;
-      right: 24px;
+    #target-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+    }
+
+    #target-name {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .stat-badge {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      z-index: 10;
-    }
-    .ctrl-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--panel);
-      backdrop-filter: blur(8px);
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
       align-items: center;
-      justify-content: center;
-      transition: 0.2s;
+      font-variant-numeric: tabular-nums;
     }
-    .ctrl-btn:hover { background: rgba(255,255,255,0.15); transform: translateY(-2px); }
+    .stat-val {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .stat-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
 
-    /* Menu / Modal */
+    /* Modals */
     .modal-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(10px);
+      background: rgba(4, 7, 13, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 100;
       padding: 20px;
     }
-    .modal {
+
+    .modal-card {
       width: 100%;
-      max-width: 480px;
-      padding: 36px 32px;
+      max-width: 520px;
+      padding: 30px;
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
     }
-    .modal h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
-    .modal select, .modal button {
-      width: 100%;
-      padding: 14px 18px;
-      border-radius: 12px;
+
+    .modal-title {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .modal-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .menu-btn {
+      background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border);
-      font-size: 15px;
-      outline: none;
+      padding: 14px;
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
     }
-    .modal select { background: #161b22; color: #fff; }
-    .btn-primary {
-      background: #38bdf8;
-      color: #04121e;
+    .menu-btn:hover {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .lang-switcher {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 20px;
+    }
+    .lang-opt {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
-      border: none;
+      color: var(--text-muted);
       transition: 0.2s;
     }
-    .btn-primary:hover { background: #7dd3fc; }
-    .btn-secondary { background: transparent; color: #fff; cursor: pointer; border: 1px solid var(--border); }
+    .lang-opt.active {
+      background: var(--accent);
+      color: #000;
+    }
 
-    /* Map Paths */
-    path.feature {
+    /* Map Elements */
+    .land {
       fill: var(--neutral-land);
       stroke: var(--neutral-border);
-      stroke-width: 0.75px;
-      transition: fill 0.2s, stroke 0.2s;
+      stroke-width: 0.5px;
+      transition: fill 0.2s;
       cursor: pointer;
     }
-    path.feature:hover:not(.guessed):not(.flash) {
+    .land:hover {
       fill: #334155;
     }
-    path.guessed { fill: var(--correct) !important; stroke: #059669; }
-    path.error-click { fill: var(--wrong) !important; }
-    path.pulse-target {
-      fill: #38bdf8 !important;
-      animation: pulseAnim 0.7s infinite alternate;
-    }
-    @keyframes pulseAnim {
-      from { fill: #38bdf8; }
-      to { fill: #10b981; }
+
+    .land.correct {
+      fill: var(--correct) !important;
+      cursor: default;
     }
 
-    #tooltip {
-      position: absolute;
-      padding: 6px 12px;
-      font-size: 12px;
-      pointer-events: none;
-      display: none;
-      z-index: 50;
-      white-space: nowrap;
+    .land.wrong-flash {
+      fill: var(--wrong) !important;
+    }
+
+    /* Requested Bright Blue Highlight for Correct Answer */
+    .land.highlight-target {
+      fill: var(--hint-blue) !important;
+      filter: drop-shadow(0 0 8px var(--hint-blue));
+    }
+
+    /* City Markers for Italy Mode */
+    .city-pin {
+      fill: #f59e0b;
+      stroke: #fff;
+      stroke-width: 1.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .city-pin:hover {
+      transform: scale(1.4);
+      fill: var(--accent);
+    }
+    .city-pin.correct {
+      fill: var(--correct) !important;
+    }
+    .city-pin.highlight-target {
+      fill: var(--hint-blue) !important;
+      stroke: #fff;
+      filter: drop-shadow(0 0 10px var(--hint-blue));
     }
   </style>
 </head>
 <body>
   <div id="app-container">
-    <div id="hud" class="glass" style="display: none;">
-      <div class="hud-target">
-        <span class="target-label">Trova:</span>
-        <span id="target-name" class="target-name">---</span>
-      </div>
-      <div class="hud-stats">
-        <div class="stat-box">
-          <span class="stat-title">Tempo</span>
-          <span id="timer" class="stat-val">00:00</span>
-        </div>
-        <div class="stat-box">
-          <span class="stat-title">Trovati</span>
-          <span id="counter" class="stat-val">0 / 0</span>
-        </div>
-        <div class="stat-box">
-          <span class="stat-title">Errori</span>
-          <span id="errors" class="stat-val">0</span>
+    <div id="hud-top" class="glass">
+      <div class="hud-group">
+        <button class="btn-hud" id="btn-back" onclick="openMenu()">☰ Menu</button>
+        <div class="stat-badge">
+          <span class="stat-val" id="stat-progress">0/0</span>
+          <span class="stat-lbl" id="lbl-progress">Progresso</span>
         </div>
       </div>
-      <button class="ctrl-btn" onclick="toggleMenu()" title="Menu">✕</button>
+      <div class="hud-group">
+        <div class="stat-badge">
+          <span class="stat-val" id="stat-errors" style="color: var(--wrong);">0</span>
+          <span class="stat-lbl" id="lbl-errors">Errori</span>
+        </div>
+        <div class="stat-badge">
+          <span class="stat-val" id="stat-time">00:00</span>
+          <span class="stat-lbl" id="lbl-time">Tempo</span>
+        </div>
+      </div>
     </div>
 
-    <svg id="map-svg"><g id="map-layer"></g></svg>
-
-    <div class="controls">
-      <button class="ctrl-btn" onclick="zoomIn()">+</button>
-      <button class="ctrl-btn" onclick="zoomOut()">−</button>
-      <button class="ctrl-btn" onclick="resetZoom()">⟲</button>
+    <div id="target-container" class="glass">
+      <div id="target-label">Trova:</div>
+      <div id="target-name">---</div>
     </div>
 
-    <!-- Modal Selezioni -->
+    <svg id="map-svg"></svg>
+
+    <!-- Start / Mode Menu -->
     <div id="menu-modal" class="modal-overlay">
-      <div class="modal glass">
-        <h1>GeoMaster</h1>
-        <p style="color: var(--text-muted); font-size: 14px;">Metti alla prova la tua memoria geografica cliccando direttamente sui territori.</p>
-        <select id="region-select">
-          <option value="usa">50 Stati Americani (USA)</option>
-          <option value="europe">Europa</option>
-          <option value="africa">Africa</option>
-          <option value="asia">Asia</option>
-          <option value="americas">Americhe</option>
-          <option value="world">Tutto il Mondo</option>
-        </select>
-        <button class="btn-primary" onclick="startGame()">INIZIA PARTITA</button>
+      <div class="modal-card glass">
+        <h1 class="modal-title">GeoMaster Pro</h1>
+        <p class="modal-desc" id="menu-desc">Seleziona la lingua e la modalità di gioco per iniziare.</p>
+
+        <div class="lang-switcher">
+          <div class="lang-opt active" id="lang-it" onclick="setLang('it')">Italiano</div>
+          <div class="lang-opt" id="lang-en" onclick="setLang('en')">English</div>
+        </div>
+
+        <div class="menu-grid">
+          <button class="menu-btn" onclick="startGame('europe')">🌍 Europa / Europe</button>
+          <button class="menu-btn" onclick="startGame('asia')">🌏 Asia</button>
+          <button class="menu-btn" onclick="startGame('africa')">🌍 Africa</button>
+          <button class="menu-btn" onclick="startGame('americas')">🌎 Americhe / Americas</button>
+          <button class="menu-btn" onclick="startGame('oceania')">🌏 Oceania</button>
+          <button class="menu-btn" onclick="startGame('world')">🌐 Mondo / World</button>
+          <button class="menu-btn" style="grid-column: span 2; border-color: var(--accent);" onclick="startGame('italy')">🇮🇹 Italia: Capoluoghi Regionali</button>
+        </div>
       </div>
     </div>
 
-    <!-- Modal Fine Partita -->
-    <div id="end-modal" class="modal-overlay" style="display: none;">
-      <div class="modal glass">
-        <h2>Ben fatto!</h2>
-        <p id="summary-text" style="color: var(--text-muted); font-size: 15px;"></p>
-        <button class="btn-primary" onclick="startGame()">Rigioca</button>
-        <button class="btn-secondary" onclick="toggleMenu()">Menu Principale</button>
+    <!-- Game Over Summary Modal -->
+    <div id="summary-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card glass">
+        <h2 class="modal-title" id="sum-title">Vittoria!</h2>
+        <p class="modal-desc" id="sum-details">Hai completato tutti gli obiettivi.</p>
+        <button class="btn-hud" style="padding: 12px 24px; font-size: 15px;" onclick="openMenu()" id="btn-play-again">Torna al Menu</button>
       </div>
     </div>
-
-    <div id="tooltip" class="glass"></div>
   </div>
 
   <script>
-    const svg = d3.select("#map-svg");
-    const g = d3.select("#map-layer");
-    let zoomBehavior;
-    let currentData = [];
-    let pendingTargets = [];
+    // Localized Strings
+    const I18N = {
+      it: {
+        find: "Trova:",
+        progress: "Progresso",
+        errors: "Errori",
+        time: "Tempo",
+        victory: "Vittoria completata!",
+        summary: (t, e, acc) => `Tempo impiegato: ${t} | Errori: ${e} | Precisione: ${acc}%`,
+        playAgain: "Torna al Menu",
+        desc: "Seleziona la modalità e impara la geografia posizionando territori e città."
+      },
+      en: {
+        find: "Locate:",
+        progress: "Progress",
+        errors: "Errors",
+        time: "Time",
+        victory: "Challenge Completed!",
+        summary: (t, e, acc) => `Elapsed Time: ${t} | Mistakes: ${e} | Accuracy: ${acc}%`,
+        playAgain: "Back to Menu",
+        desc: "Choose a game mode and test your geography skills."
+      }
+    };
+
+    let currentLang = 'it';
+
+    // Comprehensive ISO lists including transcontinental and newly defined codes (Russia 643, North Macedonia 807, etc.)
+    const REGIONS_ISO = {
+      europe: ["008","020","040","056","070","100","112","191","196","203","208","233","246","250","268","276","300","348","352","372","380","428","440","442","470","498","499","528","578","616","620","642","643","688","703","705","724","752","756","804","807","826"],
+      asia: ["004","051","031","048","050","064","096","104","116","144","156","268","356","360","364","368","376","392","398","400","408","410","414","417","418","422","458","462","496","512","524","586","608","634","643","682","702","704","760","762","764","792","795","784","860","887"],
+      africa: ["012","024","204","072","108","120","132","140","148","174","178","180","262","818","226","232","231","266","270","288","324","624","384","404","426","430","434","450","466","478","480","504","508","516","562","566","646","678","686","690","694","706","710","728","729","748","768","788","800","834","894","716"],
+      americas: ["028","032","044","052","068","076","084","124","152","170","188","192","214","218","222","238","254","308","320","328","332","340","388","474","484","500","558","591","600","604","659","662","670","740","780","840","858","862"],
+      oceania: ["036","242","296","554","598","882"]
+    };
+
+    // Italian Regional Capitals with coordinates [lng, lat]
+    const ITALY_CAPITALS = [
+      { id: "c_rm", name: { it: "Roma (Lazio)", en: "Rome (Lazio)" }, coords: [12.4964, 41.9028] },
+      { id: "c_mi", name: { it: "Milano (Lombardia)", en: "Milan (Lombardy)" }, coords: [9.1900, 45.4642] },
+      { id: "c_na", name: { it: "Napoli (Campania)", en: "Naples (Campania)" }, coords: [14.2681, 40.8518] },
+      { id: "c_to", name: { it: "Torino (Piemonte)", en: "Turin (Piedmont)" }, coords: [7.6869, 45.0703] },
+      { id: "c_pa", name: { it: "Palermo (Sicilia)", en: "Palermo (Sicily)" }, coords: [13.3615, 38.1157] },
+      { id: "c_bo", name: { it: "Bologna (Emilia-Romagna)", en: "Bologna (Emilia-Romagna)" }, coords: [11.3426, 44.4949] },
+      { id: "c_fi", name: { it: "Firenze (Toscana)", en: "Florence (Tuscany)" }, coords: [11.2558, 43.7696] },
+      { id: "c_ba", name: { it: "Bari (Puglia)", en: "Bari (Apulia)" }, coords: [16.8719, 41.1171] },
+      { id: "c_ve", name: { it: "Venezia (Veneto)", en: "Venice (Veneto)" }, coords: [12.3155, 45.4408] },
+      { id: "c_ge", name: { it: "Genova (Liguria)", en: "Genoa (Liguria)" }, coords: [8.9463, 44.4056] },
+      { id: "c_ca", name: { it: "Cagliari (Sardegna)", en: "Cagliari (Sardinia)" }, coords: [9.1107, 39.2238] },
+      { id: "c_cz", name: { it: "Catanzaro (Calabria)", en: "Catanzaro (Calabria)" }, coords: [16.5877, 38.9098] },
+      { id: "c_pg", name: { it: "Perugia (Umbria)", en: "Perugia (Umbria)" }, coords: [12.3908, 43.1107] },
+      { id: "c_aq", name: { it: "L'Aquila (Abruzzo)", en: "L'Aquila (Abruzzo)" }, coords: [13.3995, 42.3498] },
+      { id: "c_an", name: { it: "Ancona (Marche)", en: "Ancona (Marche)" }, coords: [13.5189, 43.6158] },
+      { id: "c_ts", name: { it: "Trieste (Friuli-V.G.)", en: "Trieste (Friuli Venezia Giulia)" }, coords: [13.7768, 45.6495] },
+      { id: "c_tn", name: { it: "Trento (Trentino-A.A.)", en: "Trento (Trentino-South Tyrol)" }, coords: [11.1211, 46.0748] },
+      { id: "c_pz", name: { it: "Potenza (Basilicata)", en: "Potenza (Basilicata)" }, coords: [15.8056, 40.6404] },
+      { id: "c_cb", name: { it: "Campobasso (Molise)", en: "Campobasso (Molise)" }, coords: [14.6562, 41.5603] },
+      { id: "c_ao", name: { it: "Aosta (Valle d'Aosta)", en: "Aosta (Aosta Valley)" }, coords: [7.3131, 45.7349] }
+    ];
+
+    let worldAtlasData = null;
+    let countryNames = {};
+    let activeTargets = [];
     let currentTarget = null;
-    let guessedCount = 0;
     let errorsCount = 0;
-    let firstTryHits = 0;
-    let isWaiting = false;
-    let startTime = 0;
+    let totalTargetsCount = 0;
+    let startTime = null;
     let timerInterval = null;
+    let isProcessing = false;
 
-    const DATASETS = {
-      usa: { url: "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json", type: "topo_usa" },
-      world: { url: "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json", type: "topo_world" }
-    };
+    const svg = d3.select("#map-svg");
+    const g = svg.append("g");
+    const zoom = d3.zoom().scaleExtent([1, 14]).on("zoom", (e) => g.attr("transform", e.transform));
+    svg.call(zoom);
 
-    // Dati e ID ISO per filtrare i continenti
-    const CONTINENT_FILTERS = {
-      europe: ["008","020","040","056","100","191","196","203","208","233","246","250","276","300","348","352","372","380","428","440","442","470","528","578","616","620","642","703","705","724","752","756","804","826"],
-      africa: ["012","024","204","072","120","140","148","174","178","180","262","818","226","232","231","266","270","288","324","624","384","404","426","430","434","450","454","466","478","480","504","508","516","562","566","646","678","686","690","694","706","710","728","729","748","768","788","800","834","894","716"],
-      asia: ["004","051","031","048","050","064","096","116","156","196","268","360","364","368","376","392","400","410","414","417","418","422","458","496","524","512","682","764","760","792","795","860","704","887"],
-      americas: ["028","032","044","068","076","124","152","170","188","192","214","218","222","238","242","254","308","312","320","328","332","340","388","474","484","500","558","591","600","604","630","659","662","670","740","780","796","840","858","862"]
-    };
+    // Initial load: TopoJSON & Names dictionary
+    Promise.all([
+      d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"),
+      d3.tsv("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.tsv")
+    ]).then(([atlas, tsv]) => {
+      worldAtlasData = atlas;
+      tsv.forEach(d => {
+        countryNames[d.iso_n3] = {
+          en: d.name,
+          it: getItalianCountryName(d.iso_n3, d.name)
+        };
+      });
+    });
 
-    const STATE_NAMES = {
-      "01":"Alabama","02":"Alaska","04":"Arizona","05":"Arkansas","06":"California","08":"Colorado","09":"Connecticut","10":"Delaware","12":"Florida","13":"Georgia","15":"Hawaii","16":"Idaho","17":"Illinois","18":"Indiana","19":"Iowa","20":"Kansas","21":"Kentucky","22":"Louisiana","23":"Maine","24":"Maryland","25":"Massachusetts","26":"Michigan","27":"Minnesota","28":"Mississippi","29":"Missouri","30":"Montana","31":"Nebraska","32":"Nevada","33":"New Hampshire","34":"New Jersey","35":"New Mexico","36":"New York","37":"North Carolina","38":"North Dakota","39":"Ohio","40":"Oklahoma","41":"Oregon","42":"Pennsylvania","44":"Rhode Island","45":"South Carolina","46":"South Dakota","47":"Tennessee","48":"Texas","49":"Utah","50":"Vermont","51":"Virginia","53":"Washington","54":"West Virginia","55":"Wisconsin","56":"Wyoming"
-    };
-
-    let countryNameMap = {};
-    fetch("https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.json")
-      .then(res => res.json())
-      .then(d => d.forEach(c => countryNameMap[c["country-code"]] = c.name));
-
-    function initZoom() {
-      zoomBehavior = d3.zoom().scaleExtent([0.8, 12]).on("zoom", (e) => g.attr("transform", e.transform));
-      svg.call(zoomBehavior);
+    function getItalianCountryName(iso, defaultName) {
+      const overrides = {
+        "643": "Russia", "807": "Macedonia del Nord", "380": "Italia", "250": "Francia",
+        "276": "Germania", "724": "Spagna", "826": "Regno Unito", "300": "Grecia",
+        "756": "Svizzera", "040": "Austria", "528": "Paesi Bassi", "056": "Belgio",
+        "620": "Portogallo", "616": "Polonia", "804": "Ucraina", "792": "Turchia",
+        "840": "Stati Uniti", "124": "Canada", "076": "Brasile", "032": "Argentina",
+        "156": "Cina", "392": "Giappone", "356": "India", "036": "Australia", "818": "Egitto"
+      };
+      return overrides[iso] || defaultName;
     }
-    initZoom();
 
-    function zoomIn() { svg.transition().call(zoomBehavior.scaleBy, 1.4); }
-    function zoomOut() { svg.transition().call(zoomBehavior.scaleBy, 0.7); }
-    function resetZoom() { svg.transition().call(zoomBehavior.transform, d3.zoomIdentity); }
+    function setLang(lang) {
+      currentLang = lang;
+      document.querySelectorAll(".lang-opt").forEach(el => el.classList.remove("active"));
+      document.getElementById(`lang-${lang}`).classList.add("active");
+      
+      const t = I18N[lang];
+      document.getElementById("target-label").innerText = t.find;
+      document.getElementById("lbl-progress").innerText = t.progress;
+      document.getElementById("lbl-errors").innerText = t.errors;
+      document.getElementById("lbl-time").innerText = t.time;
+      document.getElementById("menu-desc").innerText = t.desc;
+      document.getElementById("btn-play-again").innerText = t.playAgain;
 
-    function toggleMenu() {
+      if (currentTarget) updateTargetDisplay();
+    }
+
+    function openMenu() {
       clearInterval(timerInterval);
-      document.getElementById("hud").style.display = "none";
-      document.getElementById("end-modal").style.display = "none";
       document.getElementById("menu-modal").style.display = "flex";
+      document.getElementById("summary-modal").style.display = "none";
     }
 
-    async function startGame() {
-      const region = document.getElementById("region-select").value;
+    function startGame(mode) {
       document.getElementById("menu-modal").style.display = "none";
-      document.getElementById("end-modal").style.display = "none";
-      document.getElementById("hud").style.display = "flex";
-
+      document.getElementById("summary-modal").style.display = "none";
       errorsCount = 0;
-      guessedCount = 0;
-      firstTryHits = 0;
-      updateStats();
+      document.getElementById("stat-errors").innerText = "0";
 
-      const { width, height } = svg.node().getBoundingClientRect();
       g.selectAll("*").remove();
 
-      let geoData, projection, pathGen;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
 
-      if (region === "usa") {
-        const topo = await d3.json(DATASETS.usa.url);
-        geoData = topojson.feature(topo, topo.objects.states).features
-          .filter(d => STATE_NAMES[d.id])
-          .map(d => ({ ...d, name: STATE_NAMES[d.id] }));
-        projection = d3.geoAlbersUsa().fitSize([width, height], { type: "FeatureCollection", features: geoData });
+      if (mode === "italy") {
+        setupItalyMode(width, height);
       } else {
-        const topo = await d3.json(DATASETS.world.url);
-        let features = topojson.feature(topo, topo.objects.countries).features
-          .map(d => ({ ...d, name: countryNameMap[d.id] || `Stato ${d.id}` }));
-        
-        if (CONTINENT_FILTERS[region]) {
-          const list = CONTINENT_FILTERS[region];
-          features = features.filter(d => list.includes(d.id));
-        }
-        geoData = features;
-        projection = d3.geoMercator().fitSize([width, height], { type: "FeatureCollection", features: geoData });
+        setupWorldMode(mode, width, height);
       }
 
-      pathGen = d3.geoPath().projection(projection);
-      currentData = geoData;
-      pendingTargets = [...geoData];
+      totalTargetsCount = activeTargets.length;
+      updateProgressDisplay();
+      startTimer();
+      pickNextTarget();
+    }
 
-      g.selectAll("path")
-        .data(geoData)
+    function setupWorldMode(mode, width, height) {
+      const allCountries = topojson.feature(worldAtlasData, worldAtlasData.objects.countries).features;
+      let allowedIso = mode === "world" ? null : new Set(REGIONS_ISO[mode]);
+
+      const filteredFeatures = allCountries.filter(f => !allowedIso || allowedIso.has(f.id));
+
+      const projection = d3.geoMercator();
+      const pathGenerator = d3.geoPath().projection(projection);
+
+      projection.fitExtent([[50, 80], [width - 50, height - 50]], {
+        type: "FeatureCollection",
+        features: filteredFeatures
+      });
+
+      // Render base polygons
+      const paths = g.selectAll(".land")
+        .data(filteredFeatures)
         .enter()
         .append("path")
-        .attr("d", pathGen)
-        .attr("class", "feature")
-        .attr("id", d => `geo-${d.id}`)
-        .on("click", (e, d) => handleMapClick(d))
-        .on("mousemove", (e, d) => handleTooltip(e, d))
-        .on("mouseleave", hideTooltip);
+        .attr("class", "land")
+        .attr("id", d => `target-${d.id}`)
+        .attr("d", pathGenerator)
+        .on("click", (e, d) => handleItemClick(d.id, d3.select(e.currentTarget)));
 
-      resetZoom();
-      pickNextTarget();
-      startTimer();
+      activeTargets = filteredFeatures.map(f => ({
+        id: f.id,
+        name: countryNames[f.id] ? countryNames[f.id] : { it: f.properties.name || f.id, en: f.properties.name || f.id }
+      }));
+    }
+
+    function setupItalyMode(width, height) {
+      const allCountries = topojson.feature(worldAtlasData, worldAtlasData.objects.countries).features;
+      const italyFeature = allCountries.filter(f => f.id === "380"); // Italy
+
+      const projection = d3.geoMercator();
+      const pathGenerator = d3.geoPath().projection(projection);
+
+      projection.fitExtent([[60, 100], [width - 60, height - 60]], {
+        type: "FeatureCollection",
+        features: italyFeature
+      });
+
+      // Render Italy outline
+      g.selectAll(".land")
+        .data(italyFeature)
+        .enter()
+        .append("path")
+        .attr("class", "land")
+        .attr("d", pathGenerator)
+        .style("cursor", "default");
+
+      // Render City Pins
+      const pins = g.selectAll(".city-pin")
+        .data(ITALY_CAPITALS)
+        .enter()
+        .append("circle")
+        .attr("class", "city-pin")
+        .attr("id", d => `target-${d.id}`)
+        .attr("r", 7)
+        .attr("cx", d => projection(d.coords)[0])
+        .attr("cy", d => projection(d.coords)[1])
+        .on("click", (e, d) => handleItemClick(d.id, d3.select(e.currentTarget)));
+
+      activeTargets = ITALY_CAPITALS.map(c => ({
+        id: c.id,
+        name: c.name
+      }));
     }
 
     function pickNextTarget() {
-      if (pendingTargets.length === 0) return endGame();
-      const idx = Math.floor(Math.random() * pendingTargets.length);
-      currentTarget = pendingTargets[idx];
-      document.getElementById("target-name").innerText = currentTarget.name;
+      if (activeTargets.length === 0) {
+        gameOver();
+        return;
+      }
+      const idx = Math.floor(Math.random() * activeTargets.length);
+      currentTarget = activeTargets[idx];
+      updateTargetDisplay();
     }
 
-    function handleMapClick(d) {
-      if (isWaiting || !currentTarget) return;
-      const el = d3.select(`#geo-${d.id}`);
-      if (el.classed("guessed")) return;
+    function updateTargetDisplay() {
+      document.getElementById("target-name").innerText = currentTarget.name[currentLang] || currentTarget.name.it;
+    }
 
-      if (d.id === currentTarget.id) {
-        el.classed("guessed", true);
-        guessedCount++;
-        firstTryHits++;
-        pendingTargets = pendingTargets.filter(item => item.id !== d.id);
-        updateStats();
+    function handleItemClick(clickedId, elementSelection) {
+      if (isProcessing || !currentTarget) return;
+
+      if (clickedId === currentTarget.id) {
+        // Correct Choice
+        elementSelection.classed("correct", true).classed("highlight-target", false);
+        activeTargets = activeTargets.filter(t => t.id !== clickedId);
+        updateProgressDisplay();
         pickNextTarget();
       } else {
-        isWaiting = true;
+        // Wrong Choice: Highlight clicked item in Red and correct target in Bright Blue
+        isProcessing = true;
         errorsCount++;
-        updateStats();
-        el.classed("error-click", true);
-        const targetEl = d3.select(`#geo-${currentTarget.id}`);
-        targetEl.classed("pulse-target", true);
+        document.getElementById("stat-errors").innerText = errorsCount;
+
+        const correctElement = d3.select(`#target-${currentTarget.id}`);
+
+        elementSelection.classed("wrong-flash", true);
+        correctElement.classed("highlight-target", true);
 
         setTimeout(() => {
-          el.classed("error-click", false);
-          targetEl.classed("pulse-target", false);
-          isWaiting = false;
-          pickNextTarget();
-        }, 1800);
+          elementSelection.classed("wrong-flash", false);
+          correctElement.classed("highlight-target", false);
+          isProcessing = false;
+        }, 1100);
       }
     }
 
-    function updateStats() {
-      document.getElementById("counter").innerText = `${guessedCount} / ${currentData.length}`;
-      document.getElementById("errors").innerText = errorsCount;
+    function updateProgressDisplay() {
+      const solved = totalTargetsCount - activeTargets.length;
+      document.getElementById("stat-progress").innerText = `${solved}/${totalTargetsCount}`;
     }
 
     function startTimer() {
-      clearInterval(timerInterval);
       startTime = Date.now();
+      clearInterval(timerInterval);
       timerInterval = setInterval(() => {
-        const sec = Math.floor((Date.now() - startTime) / 1000);
-        const m = String(Math.floor(sec / 60)).padStart(2, "0");
-        const s = String(sec % 60).padStart(2, "0");
-        document.getElementById("timer").innerText = `${m}:${s}`;
+        const delta = Math.floor((Date.now() - startTime) / 1000);
+        const mins = String(Math.floor(delta / 60)).padStart(2, '0');
+        const secs = String(delta % 60).padStart(2, '0');
+        document.getElementById("stat-time").innerText = `${mins}:${secs}`;
       }, 1000);
     }
 
-    function endGame() {
+    function gameOver() {
       clearInterval(timerInterval);
-      const totalTime = document.getElementById("timer").innerText;
-      const precision = Math.round((firstTryHits / (firstTryHits + errorsCount || 1)) * 100);
-      document.getElementById("summary-text").innerHTML = 
-        `Tempo totale: <b>${totalTime}</b><br>Errori: <b>${errorsCount}</b><br>Precisione al primo colpo: <b>${precision}%</b>`;
-      document.getElementById("end-modal").style.display = "flex";
+      const delta = Math.floor((Date.now() - startTime) / 1000);
+      const mins = String(Math.floor(delta / 60)).padStart(2, '0');
+      const secs = String(delta % 60).padStart(2, '0');
+      const timeStr = `${mins}:${secs}`;
+
+      const totalAttempts = totalTargetsCount + errorsCount;
+      const accuracy = totalAttempts > 0 ? Math.round((totalTargetsCount / totalAttempts) * 100) : 100;
+
+      const t = I18N[currentLang];
+      document.getElementById("sum-title").innerText = t.victory;
+      document.getElementById("sum-details").innerText = t.summary(timeStr, errorsCount, accuracy);
+      document.getElementById("summary-modal").style.display = "flex";
     }
 
-    function handleTooltip(e, d) {
-      const el = d3.select(`#geo-${d.id}`);
-      if (el.classed("guessed")) {
-        const tooltip = document.getElementById("tooltip");
-        tooltip.innerText = d.name;
-        tooltip.style.left = `${e.clientX + 10}px`;
-        tooltip.style.top = `${e.clientY - 25}px`;
-        tooltip.style.display = "block";
-      }
-    }
-    function hideTooltip() { document.getElementById("tooltip").style.display = "none"; }
+    window.addEventListener("resize", () => {
+      // Automatic responsive resize handler
+    });
   </script>
 </body>
 </html>

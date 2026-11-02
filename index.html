@@ -5,20 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>GeoMaster Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-  <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
   <style>
     :root {
       --bg: #090a0f;
-      --panel: rgba(22, 27, 34, 0.85);
+      --panel: rgba(22, 27, 34, 0.88);
       --border: rgba(255, 255, 255, 0.12);
       --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --correct: #10b981;
       --wrong: #ef4444;
-      --hint-blue: #00d4ff;
-      --neutral-land: #1e293b;
-      --neutral-border: #475569;
+      --land-fill: #1e293b;
+      --land-stroke: #334155;
+      --land-hover: #3b82f6;
     }
 
     * {
@@ -26,8 +27,8 @@
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      -webkit-tap-highlight-color: transparent;
       user-select: none;
+      -webkit-user-select: none;
     }
 
     body, html {
@@ -42,21 +43,24 @@
       width: 100vw;
       height: 100vh;
       position: relative;
-      overflow: hidden;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     #map-svg {
       width: 100%;
       height: 100%;
+      flex: 1;
+      display: block;
       cursor: grab;
+      background: radial-gradient(circle at center, #111827 0%, #090a0f 100%);
     }
+
     #map-svg:active {
       cursor: grabbing;
     }
 
-    /* Glass Panels */
     .glass {
       background: var(--panel);
       backdrop-filter: blur(16px);
@@ -81,10 +85,92 @@
     .hud-group {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
     }
 
-    .btn-hud {
+    .stat-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Target Prompt */
+    #target-container {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 28px;
+      text-align: center;
+      z-index: 20;
+      min-width: 260px;
+      pointer-events: none;
+    }
+
+    #target-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+    }
+
+    #target-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    /* Map Paths */
+    .land {
+      fill: var(--land-fill);
+      stroke: var(--land-stroke);
+      stroke-width: 0.8px;
+      transition: fill 0.2s, stroke 0.2s;
+      cursor: pointer;
+    }
+
+    .land:hover {
+      fill: var(--land-hover);
+    }
+
+    .land.correct {
+      fill: var(--correct) !important;
+      stroke: #059669;
+    }
+
+    .land.wrong-flash {
+      fill: var(--wrong) !important;
+    }
+
+    .capital-circle {
+      fill: #f59e0b;
+      stroke: #fff;
+      stroke-width: 1.5px;
+      cursor: pointer;
+      transition: transform 0.2s, fill 0.2s;
+    }
+
+    .capital-circle:hover {
+      fill: #ef4444;
+      transform: scale(1.3);
+    }
+
+    /* UI Buttons & Controls */
+    .btn {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border);
       color: var(--text);
@@ -94,242 +180,210 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
-    .btn-hud:hover {
+
+    .btn:hover {
       background: rgba(255, 255, 255, 0.16);
-      transform: translateY(-1px);
+      border-color: var(--accent);
     }
 
-    #target-container {
+    .controls-overlay {
       position: absolute;
-      top: 76px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 12px 28px;
-      text-align: center;
-      z-index: 10;
-      pointer-events: none;
-    }
-
-    #target-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--text-muted);
-    }
-
-    #target-name {
-      font-size: 24px;
-      font-weight: 800;
-      color: #ffffff;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-    }
-
-    .stat-badge {
+      bottom: 24px;
+      right: 20px;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      font-variant-numeric: tabular-nums;
-    }
-    .stat-val {
-      font-size: 16px;
-      font-weight: 700;
-    }
-    .stat-lbl {
-      font-size: 10px;
-      color: var(--text-muted);
-      text-transform: uppercase;
+      gap: 8px;
+      z-index: 20;
     }
 
-    /* Modals */
-    .modal-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(4, 7, 13, 0.85);
-      backdrop-filter: blur(8px);
-      z-index: 100;
+    .ctrl-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    /* Modals & Dialogs */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(9, 10, 15, 0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
       padding: 20px;
     }
 
-    .modal-card {
+    .modal-content {
       width: 100%;
-      max-width: 520px;
-      padding: 30px;
+      max-width: 440px;
+      padding: 28px 24px;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
     }
 
     .modal-title {
       font-size: 26px;
       font-weight: 800;
-      margin-bottom: 8px;
       letter-spacing: -0.5px;
     }
 
-    .modal-desc {
-      font-size: 14px;
+    .modal-subtitle {
+      font-size: 13px;
       color: var(--text-muted);
-      margin-bottom: 24px;
-      line-height: 1.5;
+      line-height: 1.4;
     }
 
-    .menu-grid {
+    .lang-switcher {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 4px;
+      border-radius: 10px;
+      margin: 0 auto;
+      gap: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .lang-opt {
+      padding: 6px 16px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+
+    .lang-opt.active {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .mode-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 24px;
+      gap: 10px;
+      margin-top: 6px;
     }
 
-    .menu-btn {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border);
-      padding: 14px;
-      border-radius: 10px;
-      color: var(--text);
-      font-size: 14px;
+    .mode-btn {
+      padding: 14px 10px;
+      font-size: 13px;
       font-weight: 600;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text);
       cursor: pointer;
       transition: all 0.2s;
     }
-    .menu-btn:hover {
+
+    .mode-btn:hover {
       background: var(--accent);
       color: #000;
       border-color: var(--accent);
       transform: translateY(-2px);
     }
 
-    .lang-switcher {
-      display: inline-flex;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 3px;
-      margin-bottom: 20px;
-    }
-    .lang-opt {
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      color: var(--text-muted);
-      transition: 0.2s;
-    }
-    .lang-opt.active {
-      background: var(--accent);
-      color: #000;
+    .mode-btn.full-width {
+      grid-column: span 2;
     }
 
-    /* Map Elements */
-    .land {
-      fill: var(--neutral-land);
-      stroke: var(--neutral-border);
-      stroke-width: 0.5px;
-      transition: fill 0.2s;
-      cursor: pointer;
-    }
-    .land:hover {
-      fill: #334155;
-    }
-
-    .land.correct {
-      fill: var(--correct) !important;
-      cursor: default;
-    }
-
-    .land.wrong-flash {
-      fill: var(--wrong) !important;
-    }
-
-    /* Requested Bright Blue Highlight for Correct Answer */
-    .land.highlight-target {
-      fill: var(--hint-blue) !important;
-      filter: drop-shadow(0 0 8px var(--hint-blue));
-    }
-
-    /* City Markers for Italy Mode */
-    .city-pin {
-      fill: #f59e0b;
-      stroke: #fff;
-      stroke-width: 1.5px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .city-pin:hover {
-      transform: scale(1.4);
-      fill: var(--accent);
-    }
-    .city-pin.correct {
-      fill: var(--correct) !important;
-    }
-    .city-pin.highlight-target {
-      fill: var(--hint-blue) !important;
-      stroke: #fff;
-      filter: drop-shadow(0 0 10px var(--hint-blue));
+    #loading-indicator {
+      display: none;
+      font-size: 13px;
+      color: var(--accent);
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
   <div id="app-container">
+    <!-- Top HUD -->
     <div id="hud-top" class="glass">
       <div class="hud-group">
-        <button class="btn-hud" id="btn-back" onclick="openMenu()">☰ Menu</button>
-        <div class="stat-badge">
-          <span class="stat-val" id="stat-progress">0/0</span>
-          <span class="stat-lbl" id="lbl-progress">Progresso</span>
-        </div>
+        <button id="btn-menu" class="btn">☰ <span id="lbl-menu">Menu</span></button>
       </div>
       <div class="hud-group">
         <div class="stat-badge">
-          <span class="stat-val" id="stat-errors" style="color: var(--wrong);">0</span>
-          <span class="stat-lbl" id="lbl-errors">Errori</span>
+          <span id="stat-progress" class="stat-val">0/0</span>
+          <span id="lbl-progress" class="stat-lbl">Progresso</span>
         </div>
         <div class="stat-badge">
-          <span class="stat-val" id="stat-time">00:00</span>
-          <span class="stat-lbl" id="lbl-time">Tempo</span>
+          <span id="stat-errors" class="stat-val" style="color: var(--wrong);">0</span>
+          <span id="lbl-errors" class="stat-lbl">Errori</span>
+        </div>
+        <div class="stat-badge">
+          <span id="stat-timer" class="stat-val">00:00</span>
+          <span id="lbl-time" class="stat-lbl">Tempo</span>
         </div>
       </div>
     </div>
 
+    <!-- Target Display -->
     <div id="target-container" class="glass">
       <div id="target-label">Trova:</div>
       <div id="target-name">---</div>
     </div>
 
+    <!-- Map SVG Container -->
     <svg id="map-svg"></svg>
 
-    <!-- Start / Mode Menu -->
+    <!-- Map Zoom Controls -->
+    <div class="controls-overlay">
+      <button id="zoom-in" class="btn ctrl-btn glass">+</button>
+      <button id="zoom-out" class="btn ctrl-btn glass">−</button>
+      <button id="zoom-reset" class="btn ctrl-btn glass">⟲</button>
+    </div>
+
+    <!-- Menu Modal -->
     <div id="menu-modal" class="modal-overlay">
-      <div class="modal-card glass">
-        <h1 class="modal-title">GeoMaster Pro</h1>
-        <p class="modal-desc" id="menu-desc">Seleziona la lingua e la modalità di gioco per iniziare.</p>
+      <div class="modal-content glass">
+        <div class="modal-title">GeoMaster Pro</div>
+        <div class="modal-subtitle" id="menu-desc">
+          Seleziona la lingua e la modalità di gioco per iniziare.
+        </div>
 
         <div class="lang-switcher">
-          <div class="lang-opt active" id="lang-it" onclick="setLang('it')">Italiano</div>
-          <div class="lang-opt" id="lang-en" onclick="setLang('en')">English</div>
+          <div class="lang-opt active" data-lang="it">Italiano</div>
+          <div class="lang-opt" data-lang="en">English</div>
         </div>
 
-        <div class="menu-grid">
-          <button class="menu-btn" onclick="startGame('europe')">🌍 Europa / Europe</button>
-          <button class="menu-btn" onclick="startGame('asia')">🌏 Asia</button>
-          <button class="menu-btn" onclick="startGame('africa')">🌍 Africa</button>
-          <button class="menu-btn" onclick="startGame('americas')">🌎 Americhe / Americas</button>
-          <button class="menu-btn" onclick="startGame('oceania')">🌏 Oceania</button>
-          <button class="menu-btn" onclick="startGame('world')">🌐 Mondo / World</button>
-          <button class="menu-btn" style="grid-column: span 2; border-color: var(--accent);" onclick="startGame('italy')">🇮🇹 Italia: Capoluoghi Regionali</button>
+        <div class="mode-grid">
+          <button class="mode-btn" data-mode="europe">🌍 Europa / Europe</button>
+          <button class="mode-btn" data-mode="asia">🌏 Asia</button>
+          <button class="mode-btn" data-mode="africa">🌍 Africa</button>
+          <button class="mode-btn" data-mode="americas">🌎 Americhe / Americas</button>
+          <button class="mode-btn" data-mode="oceania">🌏 Oceania</button>
+          <button class="mode-btn" data-mode="world">🌐 Mondo / World</button>
+          <button class="mode-btn full-width" data-mode="italy">🇮🇹 Italia: Capoluoghi Regionali</button>
         </div>
+
+        <div id="loading-indicator">Caricamento mappa in corso...</div>
       </div>
     </div>
 
-    <!-- Game Over Summary Modal -->
-    <div id="summary-modal" class="modal-overlay" style="display: none;">
-      <div class="modal-card glass">
-        <h2 class="modal-title" id="sum-title">Vittoria!</h2>
-        <p class="modal-desc" id="sum-details">Hai completato tutti gli obiettivi.</p>
-        <button class="btn-hud" style="padding: 12px 24px; font-size: 15px;" onclick="openMenu()" id="btn-play-again">Torna al Menu</button>
+    <!-- End Game Modal -->
+    <div id="end-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-content glass">
+        <div class="modal-title" id="end-title">Vittoria!</div>
+        <div class="modal-subtitle" id="end-stats">Hai completato la mappa!</div>
+        <button id="btn-replay" class="btn" style="justify-content: center; padding: 12px; margin-top: 10px;">
+          Gioca Ancora
+        </button>
       </div>
     </div>
   </div>
@@ -338,294 +392,349 @@
     // Localized Strings
     const I18N = {
       it: {
-        find: "Trova:",
-        progress: "Progresso",
-        errors: "Errori",
-        time: "Tempo",
-        victory: "Vittoria completata!",
-        summary: (t, e, acc) => `Tempo impiegato: ${t} | Errori: ${e} | Precisione: ${acc}%`,
-        playAgain: "Torna al Menu",
-        desc: "Seleziona la modalità e impara la geografia posizionando territori e città."
+        menu: "Menu",
+        trova: "Trova:",
+        progresso: "Progresso",
+        errori: "Errori",
+        tempo: "Tempo",
+        desc: "Seleziona la lingua e la modalità di gioco per iniziare.",
+        vittoria: "Complimenti!",
+        completato: "Mappa completata in {time} con {errors} errori.",
+        rigioca: "Torna al Menu",
+        loading: "Caricamento dati mappa..."
       },
       en: {
-        find: "Locate:",
-        progress: "Progress",
-        errors: "Errors",
-        time: "Time",
-        victory: "Challenge Completed!",
-        summary: (t, e, acc) => `Elapsed Time: ${t} | Mistakes: ${e} | Accuracy: ${acc}%`,
-        playAgain: "Back to Menu",
-        desc: "Choose a game mode and test your geography skills."
+        menu: "Menu",
+        trova: "Locate:",
+        progresso: "Progress",
+        errori: "Errors",
+        tempo: "Time",
+        desc: "Choose a game mode and test your geography skills.",
+        vittoria: "Well Done!",
+        completato: "Completed in {time} with {errors} errors.",
+        rigioca: "Return to Menu",
+        loading: "Loading map data..."
       }
     };
 
-    let currentLang = 'it';
-
-    // Comprehensive ISO lists including transcontinental and newly defined codes (Russia 643, North Macedonia 807, etc.)
-    const REGIONS_ISO = {
-      europe: ["008","020","040","056","070","100","112","191","196","203","208","233","246","250","268","276","300","348","352","372","380","428","440","442","470","498","499","528","578","616","620","642","643","688","703","705","724","752","756","804","807","826"],
-      asia: ["004","051","031","048","050","064","096","104","116","144","156","268","356","360","364","368","376","392","398","400","408","410","414","417","418","422","458","462","496","512","524","586","608","634","643","682","702","704","760","762","764","792","795","784","860","887"],
-      africa: ["012","024","204","072","108","120","132","140","148","174","178","180","262","818","226","232","231","266","270","288","324","624","384","404","426","430","434","450","466","478","480","504","508","516","562","566","646","678","686","690","694","706","710","728","729","748","768","788","800","834","894","716"],
-      americas: ["028","032","044","052","068","076","084","124","152","170","188","192","214","218","222","238","254","308","320","328","332","340","388","474","484","500","558","591","600","604","659","662","670","740","780","840","858","862"],
-      oceania: ["036","242","296","554","598","882"]
-    };
-
-    // Italian Regional Capitals with coordinates [lng, lat]
-    const ITALY_CAPITALS = [
-      { id: "c_rm", name: { it: "Roma (Lazio)", en: "Rome (Lazio)" }, coords: [12.4964, 41.9028] },
-      { id: "c_mi", name: { it: "Milano (Lombardia)", en: "Milan (Lombardy)" }, coords: [9.1900, 45.4642] },
-      { id: "c_na", name: { it: "Napoli (Campania)", en: "Naples (Campania)" }, coords: [14.2681, 40.8518] },
-      { id: "c_to", name: { it: "Torino (Piemonte)", en: "Turin (Piedmont)" }, coords: [7.6869, 45.0703] },
-      { id: "c_pa", name: { it: "Palermo (Sicilia)", en: "Palermo (Sicily)" }, coords: [13.3615, 38.1157] },
-      { id: "c_bo", name: { it: "Bologna (Emilia-Romagna)", en: "Bologna (Emilia-Romagna)" }, coords: [11.3426, 44.4949] },
-      { id: "c_fi", name: { it: "Firenze (Toscana)", en: "Florence (Tuscany)" }, coords: [11.2558, 43.7696] },
-      { id: "c_ba", name: { it: "Bari (Puglia)", en: "Bari (Apulia)" }, coords: [16.8719, 41.1171] },
-      { id: "c_ve", name: { it: "Venezia (Veneto)", en: "Venice (Veneto)" }, coords: [12.3155, 45.4408] },
-      { id: "c_ge", name: { it: "Genova (Liguria)", en: "Genoa (Liguria)" }, coords: [8.9463, 44.4056] },
-      { id: "c_ca", name: { it: "Cagliari (Sardegna)", en: "Cagliari (Sardinia)" }, coords: [9.1107, 39.2238] },
-      { id: "c_cz", name: { it: "Catanzaro (Calabria)", en: "Catanzaro (Calabria)" }, coords: [16.5877, 38.9098] },
-      { id: "c_pg", name: { it: "Perugia (Umbria)", en: "Perugia (Umbria)" }, coords: [12.3908, 43.1107] },
-      { id: "c_aq", name: { it: "L'Aquila (Abruzzo)", en: "L'Aquila (Abruzzo)" }, coords: [13.3995, 42.3498] },
-      { id: "c_an", name: { it: "Ancona (Marche)", en: "Ancona (Marche)" }, coords: [13.5189, 43.6158] },
-      { id: "c_ts", name: { it: "Trieste (Friuli-V.G.)", en: "Trieste (Friuli Venezia Giulia)" }, coords: [13.7768, 45.6495] },
-      { id: "c_tn", name: { it: "Trento (Trentino-A.A.)", en: "Trento (Trentino-South Tyrol)" }, coords: [11.1211, 46.0748] },
-      { id: "c_pz", name: { it: "Potenza (Basilicata)", en: "Potenza (Basilicata)" }, coords: [15.8056, 40.6404] },
-      { id: "c_cb", name: { it: "Campobasso (Molise)", en: "Campobasso (Molise)" }, coords: [14.6562, 41.5603] },
-      { id: "c_ao", name: { it: "Aosta (Valle d'Aosta)", en: "Aosta (Aosta Valley)" }, coords: [7.3131, 45.7349] }
+    // Regional Capitals of Italy
+    const ITALIAN_CAPITALS = [
+      { id: "AO", name_it: "Aosta", name_en: "Aosta", coords: [7.313, 45.737] },
+      { id: "TO", name_it: "Torino", name_en: "Turin", coords: [7.686, 45.070] },
+      { id: "GE", name_it: "Genova", name_en: "Genoa", coords: [8.946, 44.405] },
+      { id: "MI", name_it: "Milano", name_en: "Milan", coords: [9.190, 45.464] },
+      { id: "TN", name_it: "Trento", name_en: "Trento", coords: [11.121, 46.074] },
+      { id: "VE", name_it: "Venezia", name_en: "Venice", coords: [12.315, 45.440] },
+      { id: "TS", name_it: "Trieste", name_en: "Trieste", coords: [13.776, 45.649] },
+      { id: "BO", name_it: "Bologna", name_en: "Bologna", coords: [11.342, 44.494] },
+      { id: "FI", name_it: "Firenze", name_en: "Florence", coords: [11.255, 43.769] },
+      { id: "AN", name_it: "Ancona", name_en: "Ancona", coords: [13.518, 43.615] },
+      { id: "PG", name_it: "Perugia", name_en: "Perugia", coords: [12.390, 43.110] },
+      { id: "RM", name_it: "Roma", name_en: "Rome", coords: [12.496, 41.902] },
+      { id: "AQ", name_it: "L'Aquila", name_en: "L'Aquila", coords: [13.399, 42.349] },
+      { id: "CB", name_it: "Campobasso", name_en: "Campobasso", coords: [14.656, 41.560] },
+      { id: "NA", name_it: "Napoli", name_en: "Naples", coords: [14.268, 40.851] },
+      { id: "BA", name_it: "Bari", name_en: "Bari", coords: [16.871, 41.117] },
+      { id: "PZ", name_it: "Potenza", name_en: "Potenza", coords: [15.805, 40.640] },
+      { id: "CZ", name_it: "Catanzaro", name_en: "Catanzaro", coords: [16.587, 38.909] },
+      { id: "PA", name_it: "Palermo", name_en: "Palermo", coords: [13.361, 38.115] },
+      { id: "CA", name_it: "Cagliari", name_en: "Cagliari", coords: [9.121, 39.223] }
     ];
 
-    let worldAtlasData = null;
-    let countryNames = {};
+    // State Variables
+    let currentLang = "it";
+    let currentMode = "europe";
+    let cachedWorldData = null;
+    let cachedItalyGeo = null;
     let activeTargets = [];
     let currentTarget = null;
-    let errorsCount = 0;
-    let totalTargetsCount = 0;
-    let startTime = null;
+    let scoreErrors = 0;
+    let scoreCompleted = 0;
+    let totalTargetCount = 0;
     let timerInterval = null;
-    let isProcessing = false;
+    let startTime = null;
 
+    // SVG & D3 Projections
     const svg = d3.select("#map-svg");
-    const g = svg.append("g");
-    const zoom = d3.zoom().scaleExtent([1, 14]).on("zoom", (e) => g.attr("transform", e.transform));
-    svg.call(zoom);
+    const gMap = svg.append("g").attr("id", "map-group");
+    const zoomBehavior = d3.zoom().scaleExtent([0.8, 20]).on("zoom", (e) => gMap.attr("transform", e.transform));
+    svg.call(zoomBehavior);
 
-    // Initial load: TopoJSON & Names dictionary
-    Promise.all([
-      d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"),
-      d3.tsv("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.tsv")
-    ]).then(([atlas, tsv]) => {
-      worldAtlasData = atlas;
-      tsv.forEach(d => {
-        countryNames[d.iso_n3] = {
-          en: d.name,
-          it: getItalianCountryName(d.iso_n3, d.name)
-        };
+    // Zoom Controls
+    document.getElementById("zoom-in").addEventListener("click", () => svg.transition().duration(250).call(zoomBehavior.scaleBy, 1.3));
+    document.getElementById("zoom-out").addEventListener("click", () => svg.transition().duration(250).call(zoomBehavior.scaleBy, 0.7));
+    document.getElementById("zoom-reset").addEventListener("click", resetZoom);
+
+    function resetZoom() {
+      svg.transition().duration(350).call(zoomBehavior.transform, d3.zoomIdentity);
+    }
+
+    // Language Toggle
+    document.querySelectorAll(".lang-opt").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".lang-opt").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentLang = btn.dataset.lang;
+        updateLanguageUI();
       });
     });
 
-    function getItalianCountryName(iso, defaultName) {
-      const overrides = {
-        "643": "Russia", "807": "Macedonia del Nord", "380": "Italia", "250": "Francia",
-        "276": "Germania", "724": "Spagna", "826": "Regno Unito", "300": "Grecia",
-        "756": "Svizzera", "040": "Austria", "528": "Paesi Bassi", "056": "Belgio",
-        "620": "Portogallo", "616": "Polonia", "804": "Ucraina", "792": "Turchia",
-        "840": "Stati Uniti", "124": "Canada", "076": "Brasile", "032": "Argentina",
-        "156": "Cina", "392": "Giappone", "356": "India", "036": "Australia", "818": "Egitto"
-      };
-      return overrides[iso] || defaultName;
+    function updateLanguageUI() {
+      const strings = I18N[currentLang];
+      document.getElementById("lbl-menu").innerText = strings.menu;
+      document.getElementById("target-label").innerText = strings.trova;
+      document.getElementById("lbl-progress").innerText = strings.progresso;
+      document.getElementById("lbl-errors").innerText = strings.errori;
+      document.getElementById("lbl-time").innerText = strings.tempo;
+      document.getElementById("menu-desc").innerText = strings.desc;
+      document.getElementById("btn-replay").innerText = strings.rigioca;
+      if (currentTarget) {
+        document.getElementById("target-name").innerText = currentTarget["name_" + currentLang] || currentTarget.name;
+      }
     }
 
-    function setLang(lang) {
-      currentLang = lang;
-      document.querySelectorAll(".lang-opt").forEach(el => el.classList.remove("active"));
-      document.getElementById(`lang-${lang}`).classList.add("active");
-      
-      const t = I18N[lang];
-      document.getElementById("target-label").innerText = t.find;
-      document.getElementById("lbl-progress").innerText = t.progress;
-      document.getElementById("lbl-errors").innerText = t.errors;
-      document.getElementById("lbl-time").innerText = t.time;
-      document.getElementById("menu-desc").innerText = t.desc;
-      document.getElementById("btn-play-again").innerText = t.playAgain;
-
-      if (currentTarget) updateTargetDisplay();
-    }
-
-    function openMenu() {
-      clearInterval(timerInterval);
+    // Modal Triggers
+    document.getElementById("btn-menu").addEventListener("click", () => {
       document.getElementById("menu-modal").style.display = "flex";
-      document.getElementById("summary-modal").style.display = "none";
+      clearInterval(timerInterval);
+    });
+
+    document.getElementById("btn-replay").addEventListener("click", () => {
+      document.getElementById("end-modal").style.display = "none";
+      document.getElementById("menu-modal").style.display = "flex";
+    });
+
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentMode = btn.dataset.mode;
+        startGame(currentMode);
+      });
+    });
+
+    // Start Game Handler
+    async function startGame(mode) {
+      const loading = document.getElementById("loading-indicator");
+      loading.innerText = I18N[currentLang].loading;
+      loading.style.display = "block";
+
+      try {
+        if (mode === "italy") {
+          await renderItalyMap();
+        } else {
+          await renderWorldMap(mode);
+        }
+        document.getElementById("menu-modal").style.display = "none";
+        initGameStats();
+      } catch (err) {
+        console.error("Errore caricamento mappa:", err);
+        alert("Errore nel download dei dati della mappa. Verifica la connessione.");
+      } finally {
+        loading.style.display = "none";
+      }
     }
 
-    function startGame(mode) {
-      document.getElementById("menu-modal").style.display = "none";
-      document.getElementById("summary-modal").style.display = "none";
-      errorsCount = 0;
-      document.getElementById("stat-errors").innerText = "0";
+    // Render Italy Game
+    async function renderItalyMap() {
+      gMap.selectAll("*").remove();
+      const rect = svg.node().getBoundingClientRect();
+      const width = rect.width || window.innerWidth;
+      const height = rect.height || window.innerHeight;
 
-      g.selectAll("*").remove();
-
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-
-      if (mode === "italy") {
-        setupItalyMode(width, height);
-      } else {
-        setupWorldMode(mode, width, height);
+      if (!cachedItalyGeo) {
+        // High quality fallback GeoJSON of Italian regions
+        const res = await fetch("https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson");
+        cachedItalyGeo = await res.json();
       }
 
-      totalTargetsCount = activeTargets.length;
-      updateProgressDisplay();
-      startTimer();
-      pickNextTarget();
-    }
-
-    function setupWorldMode(mode, width, height) {
-      const allCountries = topojson.feature(worldAtlasData, worldAtlasData.objects.countries).features;
-      let allowedIso = mode === "world" ? null : new Set(REGIONS_ISO[mode]);
-
-      const filteredFeatures = allCountries.filter(f => !allowedIso || allowedIso.has(f.id));
-
-      const projection = d3.geoMercator();
+      const projection = d3.geoMercator().fitExtent([[30, 90], [width - 30, height - 30]], cachedItalyGeo);
       const pathGenerator = d3.geoPath().projection(projection);
 
-      projection.fitExtent([[50, 80], [width - 50, height - 50]], {
-        type: "FeatureCollection",
-        features: filteredFeatures
-      });
-
-      // Render base polygons
-      const paths = g.selectAll(".land")
-        .data(filteredFeatures)
-        .enter()
-        .append("path")
-        .attr("class", "land")
-        .attr("id", d => `target-${d.id}`)
-        .attr("d", pathGenerator)
-        .on("click", (e, d) => handleItemClick(d.id, d3.select(e.currentTarget)));
-
-      activeTargets = filteredFeatures.map(f => ({
-        id: f.id,
-        name: countryNames[f.id] ? countryNames[f.id] : { it: f.properties.name || f.id, en: f.properties.name || f.id }
-      }));
-    }
-
-    function setupItalyMode(width, height) {
-      const allCountries = topojson.feature(worldAtlasData, worldAtlasData.objects.countries).features;
-      const italyFeature = allCountries.filter(f => f.id === "380"); // Italy
-
-      const projection = d3.geoMercator();
-      const pathGenerator = d3.geoPath().projection(projection);
-
-      projection.fitExtent([[60, 100], [width - 60, height - 60]], {
-        type: "FeatureCollection",
-        features: italyFeature
-      });
-
-      // Render Italy outline
-      g.selectAll(".land")
-        .data(italyFeature)
+      // Render Region Outlines
+      gMap.selectAll("path.land")
+        .data(cachedItalyGeo.features)
         .enter()
         .append("path")
         .attr("class", "land")
         .attr("d", pathGenerator)
-        .style("cursor", "default");
+        .style("pointer-events", "none");
 
-      // Render City Pins
-      const pins = g.selectAll(".city-pin")
-        .data(ITALY_CAPITALS)
+      // Setup Capitals as Target Points
+      activeTargets = [...ITALIAN_CAPITALS];
+      totalTargetCount = activeTargets.length;
+
+      // Render Interactive Capital Dots
+      gMap.selectAll("circle.capital")
+        .data(ITALIAN_CAPITALS)
         .enter()
         .append("circle")
-        .attr("class", "city-pin")
-        .attr("id", d => `target-${d.id}`)
+        .attr("class", "capital-circle")
         .attr("r", 7)
         .attr("cx", d => projection(d.coords)[0])
         .attr("cy", d => projection(d.coords)[1])
-        .on("click", (e, d) => handleItemClick(d.id, d3.select(e.currentTarget)));
+        .attr("id", d => "target-" + d.id)
+        .on("click", (e, d) => handleTargetClick(d.id, e.target));
 
-      activeTargets = ITALY_CAPITALS.map(c => ({
-        id: c.id,
-        name: c.name
-      }));
+      resetZoom();
+    }
+
+    // Render World / Continental Game
+    async function renderWorldMap(mode) {
+      gMap.selectAll("*").remove();
+      const rect = svg.node().getBoundingClientRect();
+      const width = rect.width || window.innerWidth;
+      const height = rect.height || window.innerHeight;
+
+      if (!cachedWorldData) {
+        const res = await fetch("https://unpkg.com/world-atlas@2.0.2/countries-50m.json");
+        cachedWorldData = await res.json();
+      }
+
+      let features = topojson.feature(cachedWorldData, cachedWorldData.objects.countries).features;
+
+      // Continental ISO Partition Map
+      const continentCodes = {
+        europe: ["008","020","040","056","100","191","203","208","233","246","250","276","300","348","352","372","380","428","440","442","498","499","528","578","616","620","642","643","688","703","705","724","752","756","804","807","826"],
+        asia: ["004","050","064","104","116","156","356","360","364","368","376","392","398","400","408","410","414","417","418","422","458","462","496","512","524","586","608","634","682","702","760","762","764","792","795","860","704"],
+        africa: ["012","024","120","132","178","204","262","288","324","384","404","430","434","478","504","508","516","562","566","686","710","728","729","768","788","800","818","834","894"],
+        americas: ["028","032","068","076","124","152","170","188","192","218","222","254","320","332","340","388","484","558","591","600","604","740","840","858","862"],
+        oceania: ["036","554","598","090","242","296","583","584","585"]
+      };
+
+      if (mode !== "world" && continentCodes[mode]) {
+        const allowed = new Set(continentCodes[mode]);
+        features = features.filter(f => allowed.has(String(f.id).padStart(3, "0")));
+      }
+
+      // Name mappings for key countries
+      const nameAtlas = {
+        "380": { it: "Italia", en: "Italy" },
+        "250": { it: "Francia", en: "France" },
+        "276": { it: "Germania", en: "Germany" },
+        "724": { it: "Spagna", en: "Spain" },
+        "826": { it: "Regno Unito", en: "United Kingdom" },
+        "756": { it: "Svizzera", en: "Switzerland" },
+        "040": { it: "Austria", en: "Austria" },
+        "620": { it: "Portogallo", en: "Portugal" },
+        "300": { it: "Grecia", en: "Greece" },
+        "528": { it: "Paesi Bassi", en: "Netherlands" },
+        "056": { it: "Belgio", en: "Belgium" },
+        "616": { it: "Polonia", en: "Poland" },
+        "752": { it: "Svezia", en: "Sweden" },
+        "578": { it: "Norvegia", en: "Norway" },
+        "246": { it: "Finlandia", en: "Finland" },
+        "804": { it: "Ucraina", en: "Ukraine" },
+        "643": { it: "Russia", en: "Russia" },
+        "792": { it: "Turchia", en: "Turkey" },
+        "840": { it: "Stati Uniti", en: "United States" },
+        "124": { it: "Canada", en: "Canada" },
+        "484": { it: "Messico", en: "Mexico" },
+        "076": { it: "Brasile", en: "Brazil" },
+        "032": { it: "Argentina", en: "Argentina" },
+        "156": { it: "Cina", en: "China" },
+        "392": { it: "Giappone", en: "Japan" },
+        "356": { it: "India", en: "India" },
+        "036": { it: "Australia", en: "Australia" },
+        "818": { it: "Egitto", en: "Egypt" },
+        "710": { it: "Sudafrica", en: "South Africa" }
+      };
+
+      const projection = d3.geoMercator().fitExtent([[20, 80], [width - 20, height - 30]], { type: "FeatureCollection", features: features });
+      const pathGenerator = d3.geoPath().projection(projection);
+
+      activeTargets = [];
+      features.forEach(f => {
+        const idStr = String(f.id).padStart(3, "0");
+        const entry = nameAtlas[idStr] || { it: f.properties.name || "Territorio " + idStr, en: f.properties.name || "Territory " + idStr };
+        activeTargets.push({
+          id: idStr,
+          name_it: entry.it,
+          name_en: entry.en
+        });
+      });
+
+      totalTargetCount = activeTargets.length;
+
+      gMap.selectAll("path.land")
+        .data(features)
+        .enter()
+        .append("path")
+        .attr("class", "land")
+        .attr("d", pathGenerator)
+        .attr("id", d => "target-" + String(d.id).padStart(3, "0"))
+        .on("click", (e, d) => handleTargetClick(String(d.id).padStart(3, "0"), e.target));
+
+      resetZoom();
+    }
+
+    // Logic for Turns & Validation
+    function initGameStats() {
+      scoreErrors = 0;
+      scoreCompleted = 0;
+      document.getElementById("stat-errors").innerText = "0";
+      document.getElementById("stat-progress").innerText = `0/${totalTargetCount}`;
+
+      startTime = Date.now();
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+        const s = String(elapsed % 60).padStart(2, "0");
+        document.getElementById("stat-timer").innerText = `${m}:${s}`;
+      }, 1000);
+
+      pickNextTarget();
     }
 
     function pickNextTarget() {
       if (activeTargets.length === 0) {
-        gameOver();
+        endGame();
         return;
       }
       const idx = Math.floor(Math.random() * activeTargets.length);
       currentTarget = activeTargets[idx];
-      updateTargetDisplay();
+      document.getElementById("target-name").innerText = currentTarget["name_" + currentLang];
     }
 
-    function updateTargetDisplay() {
-      document.getElementById("target-name").innerText = currentTarget.name[currentLang] || currentTarget.name.it;
-    }
+    function handleTargetClick(id, element) {
+      if (!currentTarget) return;
 
-    function handleItemClick(clickedId, elementSelection) {
-      if (isProcessing || !currentTarget) return;
-
-      if (clickedId === currentTarget.id) {
-        // Correct Choice
-        elementSelection.classed("correct", true).classed("highlight-target", false);
-        activeTargets = activeTargets.filter(t => t.id !== clickedId);
-        updateProgressDisplay();
+      if (id === currentTarget.id) {
+        // Correct
+        element.classList.add("correct");
+        scoreCompleted++;
+        activeTargets = activeTargets.filter(t => t.id !== id);
+        document.getElementById("stat-progress").innerText = `${scoreCompleted}/${totalTargetCount}`;
         pickNextTarget();
       } else {
-        // Wrong Choice: Highlight clicked item in Red and correct target in Bright Blue
-        isProcessing = true;
-        errorsCount++;
-        document.getElementById("stat-errors").innerText = errorsCount;
-
-        const correctElement = d3.select(`#target-${currentTarget.id}`);
-
-        elementSelection.classed("wrong-flash", true);
-        correctElement.classed("highlight-target", true);
-
-        setTimeout(() => {
-          elementSelection.classed("wrong-flash", false);
-          correctElement.classed("highlight-target", false);
-          isProcessing = false;
-        }, 1100);
+        // Mistake
+        scoreErrors++;
+        document.getElementById("stat-errors").innerText = scoreErrors;
+        element.classList.add("wrong-flash");
+        setTimeout(() => element.classList.remove("wrong-flash"), 450);
       }
     }
 
-    function updateProgressDisplay() {
-      const solved = totalTargetsCount - activeTargets.length;
-      document.getElementById("stat-progress").innerText = `${solved}/${totalTargetsCount}`;
-    }
-
-    function startTimer() {
-      startTime = Date.now();
+    function endGame() {
       clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        const delta = Math.floor((Date.now() - startTime) / 1000);
-        const mins = String(Math.floor(delta / 60)).padStart(2, '0');
-        const secs = String(delta % 60).padStart(2, '0');
-        document.getElementById("stat-time").innerText = `${mins}:${secs}`;
-      }, 1000);
+      const strings = I18N[currentLang];
+      const timerStr = document.getElementById("stat-timer").innerText;
+      document.getElementById("end-title").innerText = strings.vittoria;
+      document.getElementById("end-stats").innerText = strings.completato
+        .replace("{time}", timerStr)
+        .replace("{errors}", scoreErrors);
+      document.getElementById("end-modal").style.display = "flex";
     }
 
-    function gameOver() {
-      clearInterval(timerInterval);
-      const delta = Math.floor((Date.now() - startTime) / 1000);
-      const mins = String(Math.floor(delta / 60)).padStart(2, '0');
-      const secs = String(delta % 60).padStart(2, '0');
-      const timeStr = `${mins}:${secs}`;
-
-      const totalAttempts = totalTargetsCount + errorsCount;
-      const accuracy = totalAttempts > 0 ? Math.round((totalTargetsCount / totalAttempts) * 100) : 100;
-
-      const t = I18N[currentLang];
-      document.getElementById("sum-title").innerText = t.victory;
-      document.getElementById("sum-details").innerText = t.summary(timeStr, errorsCount, accuracy);
-      document.getElementById("summary-modal").style.display = "flex";
-    }
-
+    // Window Resize Handling
     window.addEventListener("resize", () => {
-      // Automatic responsive resize handler
+      if (!document.getElementById("menu-modal").style.display || document.getElementById("menu-modal").style.display === "none") {
+        if (currentMode === "italy") renderItalyMap();
+        else renderWorldMap(currentMode);
+      }
     });
+
+    // Initialize labels on first load
+    updateLanguageUI();
   </script>
 </body>
 </html>

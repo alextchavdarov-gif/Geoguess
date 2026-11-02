@@ -9,7 +9,7 @@
   <style>
     :root {
       --bg: #0b0f19;
-      --panel: rgba(17, 24, 39, 0.85);
+      --panel: rgba(17, 24, 39, 0.88);
       --border: rgba(255, 255, 255, 0.12);
       --accent: #38bdf8;
       --text: #f8fafc;
@@ -69,7 +69,6 @@
       border-radius: 12px;
     }
 
-    /* Top HUD */
     #hud-top {
       position: absolute;
       top: 12px;
@@ -107,7 +106,6 @@
       letter-spacing: 0.5px;
     }
 
-    /* Target Bar */
     #target-container {
       position: absolute;
       top: 72px;
@@ -128,13 +126,12 @@
     }
 
     #target-name {
-      font-size: 18px;
+      font-size: 19px;
       font-weight: 800;
       color: #fff;
       margin-top: 2px;
     }
 
-    /* Path Styling - Non scaling stroke keeps borders ultra crisp */
     .land {
       fill: var(--land-fill);
       stroke: var(--land-stroke);
@@ -150,6 +147,7 @@
 
     .land.correct {
       fill: var(--correct) !important;
+      cursor: default;
     }
 
     .land.wrong-flash {
@@ -158,7 +156,7 @@
 
     .land.revealed {
       fill: var(--reveal) !important;
-      animation: pulse-reveal 0.6s infinite alternate;
+      animation: pulse-reveal 0.5s infinite alternate;
     }
 
     @keyframes pulse-reveal {
@@ -166,7 +164,6 @@
       to { fill: #60a5fa; }
     }
 
-    /* Capitals in Italy Mode */
     .capital-marker {
       cursor: pointer;
       stroke-width: 1.5px;
@@ -177,6 +174,7 @@
     .capital-marker.correct {
       fill: var(--correct) !important;
       stroke: #fff;
+      cursor: default;
     }
 
     .capital-marker.revealed {
@@ -190,19 +188,6 @@
       to { fill: #93c5fd; }
     }
 
-    .capital-label {
-      font-size: 10px;
-      fill: #e2e8f0;
-      font-weight: 600;
-      pointer-events: none;
-      paint-order: stroke;
-      stroke: #090a0f;
-      stroke-width: 2.5px;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    /* Buttons */
     .btn {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border);
@@ -244,7 +229,6 @@
       font-weight: bold;
     }
 
-    /* Dialogs */
     .modal-overlay {
       position: absolute;
       inset: 0;
@@ -260,7 +244,7 @@
 
     .modal-content {
       width: 100%;
-      max-width: 440px;
+      max-width: 460px;
       padding: 24px;
       text-align: center;
       display: flex;
@@ -343,7 +327,6 @@
 </head>
 <body>
   <div id="app-container">
-    <!-- Top HUD -->
     <div id="hud-top" class="glass">
       <div class="hud-group">
         <button id="btn-menu" class="btn">☰ <span id="lbl-menu">Menu</span></button>
@@ -364,50 +347,46 @@
       </div>
     </div>
 
-    <!-- Target Display -->
     <div id="target-container" class="glass">
       <div id="target-label">Trova:</div>
       <div id="target-name">---</div>
     </div>
 
-    <!-- Map SVG Container -->
     <svg id="map-svg"></svg>
 
-    <!-- Map Zoom Controls -->
     <div class="controls-overlay">
       <button id="zoom-in" class="btn ctrl-btn glass">+</button>
       <button id="zoom-out" class="btn ctrl-btn glass">−</button>
       <button id="zoom-reset" class="btn ctrl-btn glass">⟲</button>
     </div>
 
-    <!-- Menu Modal -->
     <div id="menu-modal" class="modal-overlay">
       <div class="modal-content glass">
         <div class="modal-title">GeoMaster Pro</div>
         <div class="modal-subtitle" id="menu-desc">
-          Seleziona la lingua e la modalità di gioco per iniziare.
+          Seleziona lingua e modalità di gioco.
         </div>
 
         <div class="lang-switcher">
           <div class="lang-opt active" data-lang="it">Italiano</div>
           <div class="lang-opt" data-lang="en">English</div>
+          <div class="lang-opt" data-lang="bg">Български</div>
         </div>
 
         <div class="mode-grid">
-          <button class="mode-btn" data-mode="europe">🌍 Europa / Europe</button>
-          <button class="mode-btn" data-mode="asia">🌏 Asia</button>
-          <button class="mode-btn" data-mode="africa">🌍 Africa</button>
-          <button class="mode-btn" data-mode="americas">🌎 Americhe / Americas</button>
-          <button class="mode-btn" data-mode="oceania">🌏 Oceania</button>
-          <button class="mode-btn" data-mode="world">🌐 Mondo / World</button>
-          <button class="mode-btn full-width" data-mode="italy">🇮🇹 Italia: Capoluoghi Regionali</button>
+          <button class="mode-btn" data-mode="europe" id="m-europe">🌍 Europa</button>
+          <button class="mode-btn" data-mode="usa" id="m-usa">🇺🇸 50 Stati USA</button>
+          <button class="mode-btn" data-mode="asia" id="m-asia">🌏 Asia</button>
+          <button class="mode-btn" data-mode="africa" id="m-africa">🌍 Africa</button>
+          <button class="mode-btn" data-mode="americas" id="m-americas">🌎 Americhe</button>
+          <button class="mode-btn" data-mode="world" id="m-world">🌐 Mondo</button>
+          <button class="mode-btn full-width" data-mode="italy" id="m-italy">🇮🇹 Italia: Città e Province</button>
         </div>
 
         <div id="loading-indicator">Caricamento mappa in corso...</div>
       </div>
     </div>
 
-    <!-- End Game Modal -->
     <div id="end-modal" class="modal-overlay" style="display: none;">
       <div class="modal-content glass">
         <div class="modal-title" id="end-title">Vittoria!</div>
@@ -428,10 +407,19 @@
         errori: "Errori",
         tempo: "Tempo",
         desc: "Seleziona la lingua e la modalità di gioco per iniziare.",
-        vittoria: "Partita Terminata!",
-        completato: "Hai completato la serie in {time} con {errors} errori.",
+        vittoria: "Complimenti!",
+        completato: "Hai completato la mappa in {time} con {errors} errori.",
         rigioca: "Torna al Menu",
-        loading: "Scaricamento confini..."
+        loading: "Caricamento confini...",
+        modes: {
+          europe: "🌍 Europa",
+          usa: "🇺🇸 50 Stati USA",
+          asia: "🌏 Asia",
+          africa: "🌍 Africa",
+          americas: "🌎 Americhe",
+          world: "🌐 Mondo",
+          italy: "🇮🇹 Italia: Città e Province"
+        }
       },
       en: {
         menu: "Menu",
@@ -439,101 +427,203 @@
         progresso: "Progress",
         errori: "Errors",
         tempo: "Time",
-        desc: "Choose a game mode and test your geography skills.",
-        vittoria: "Game Finished!",
+        desc: "Choose language and game mode to begin.",
+        vittoria: "Congratulations!",
         completato: "Completed in {time} with {errors} errors.",
-        rigioca: "Back to Menu",
-        loading: "Downloading boundaries..."
+        rigioca: "Return to Menu",
+        loading: "Loading map boundaries...",
+        modes: {
+          europe: "🌍 Europe",
+          usa: "🇺🇸 50 US States",
+          asia: "🌏 Asia",
+          africa: "🌍 Africa",
+          americas: "🌎 Americas",
+          world: "🌐 World",
+          italy: "🇮🇹 Italy: Cities & Provinces"
+        }
+      },
+      bg: {
+        menu: "Меню",
+        trova: "Намери:",
+        progresso: "Прогрес",
+        errori: "Грешки",
+        tempo: "Време",
+        desc: "Изберете език и режим на игра за начало.",
+        vittoria: "Поздравления!",
+        completato: "Завършихте играта за {time} с {errors} грешки.",
+        rigioca: "Обратно в менюто",
+        loading: "Зареждане на картата...",
+        modes: {
+          europe: "🌍 Европа",
+          usa: "🇺🇸 50 Щата на САЩ",
+          asia: "🌏 Азия",
+          africa: "🌍 Африка",
+          americas: "🌎 Америка",
+          world: "🌐 Свят",
+          italy: "🇮🇹 Италия: Градове и Провинции"
+        }
       }
     };
 
-    // Dizionario ISO numerico completo per Europa e altri continenti
+    // Dizionario Nazioni Pulito (Senza microstati non cliccabili da mobile)
     const COUNTRY_NAMES = {
-      "008": { it: "Albania", en: "Albania" },
-      "020": { it: "Andorra", en: "Andorra" },
-      "040": { it: "Austria", en: "Austria" },
-      "056": { it: "Belgio", en: "Belgium" },
-      "070": { it: "Bosnia ed Erzegovina", en: "Bosnia and Herzegovina" },
-      "100": { it: "Bulgaria", en: "Bulgaria" },
-      "112": { it: "Bielorussia", en: "Belarus" },
-      "191": { it: "Croazia", en: "Croatia" },
-      "196": { it: "Cipro", en: "Cyprus" },
-      "203": { it: "Repubblica Ceca", en: "Czech Republic" },
-      "208": { it: "Danimarca", en: "Denmark" },
-      "233": { it: "Estonia", en: "Estonia" },
-      "246": { it: "Finlandia", en: "Finland" },
-      "250": { it: "Francia", en: "France" },
-      "276": { it: "Germania", en: "Germany" },
-      "300": { it: "Grecia", en: "Greece" },
-      "348": { it: "Ungheria", en: "Hungary" },
-      "352": { it: "Islanda", en: "Iceland" },
-      "372": { it: "Irlanda", en: "Ireland" },
-      "380": { it: "Italia", en: "Italy" },
-      "428": { it: "Lettonia", en: "Latvia" },
-      "438": { it: "Liechtenstein", en: "Liechtenstein" },
-      "440": { it: "Lituania", en: "Lithuania" },
-      "442": { it: "Lussemburgo", en: "Luxembourg" },
-      "470": { it: "Malta", en: "Malta" },
-      "498": { it: "Moldavia", en: "Moldova" },
-      "492": { it: "Monaco", en: "Monaco" },
-      "499": { it: "Montenegro", en: "Montenegro" },
-      "528": { it: "Paesi Bassi", en: "Netherlands" },
-      "807": { it: "Macedonia del Nord", en: "North Macedonia" },
-      "578": { it: "Norvegia", en: "Norway" },
-      "616": { it: "Polonia", en: "Poland" },
-      "620": { it: "Portogallo", en: "Portugal" },
-      "642": { it: "Romania", en: "Romania" },
-      "643": { it: "Russia", en: "Russia" },
-      "674": { it: "San Marino", en: "San Marino" },
-      "688": { it: "Serbia", en: "Serbia" },
-      "703": { it: "Slovacchia", en: "Slovakia" },
-      "705": { it: "Slovenia", en: "Slovenia" },
-      "724": { it: "Spagna", en: "Spain" },
-      "752": { it: "Svezia", en: "Sweden" },
-      "756": { it: "Svizzera", en: "Switzerland" },
-      "804": { it: "Ucraina", en: "Ukraine" },
-      "826": { it: "Regno Unito", en: "United Kingdom" },
-      "-99": { it: "Kosovo", en: "Kosovo" },
-      // Extra Global
-      "840": { it: "Stati Uniti", en: "United States" },
-      "124": { it: "Canada", en: "Canada" },
-      "484": { it: "Messico", en: "Mexico" },
-      "076": { it: "Brasile", en: "Brazil" },
-      "032": { it: "Argentina", en: "Argentina" },
-      "156": { it: "Cina", en: "China" },
-      "392": { it: "Giappone", en: "Japan" },
-      "356": { it: "India", en: "India" },
-      "036": { it: "Australia", en: "Australia" },
-      "818": { it: "Egitto", en: "Egypt" },
-      "710": { it: "Sudafrica", en: "South Africa" }
+      "008": { it: "Albania", en: "Albania", bg: "Албания" },
+      "040": { it: "Austria", en: "Austria", bg: "Австрия" },
+      "056": { it: "Belgio", en: "Belgium", bg: "Белгия" },
+      "070": { it: "Bosnia ed Erzegovina", en: "Bosnia and Herzegovina", bg: "Босна и Херцеговина" },
+      "100": { it: "Bulgaria", en: "Bulgaria", bg: "България" },
+      "112": { it: "Bielorussia", en: "Belarus", bg: "Беларус" },
+      "191": { it: "Croazia", en: "Croatia", bg: "Хърватия" },
+      "203": { it: "Repubblica Ceca", en: "Czech Republic", bg: "Чехия" },
+      "208": { it: "Danimarca", en: "Denmark", bg: "Дания" },
+      "233": { it: "Estonia", en: "Estonia", bg: "Естония" },
+      "246": { it: "Finlandia", en: "Finland", bg: "Финландия" },
+      "250": { it: "Francia", en: "France", bg: "Франция" },
+      "276": { it: "Germania", en: "Germany", bg: "Германия" },
+      "300": { it: "Grecia", en: "Greece", bg: "Гърция" },
+      "348": { it: "Ungheria", en: "Hungary", bg: "Унгария" },
+      "372": { it: "Irlanda", en: "Ireland", bg: "Ирландия" },
+      "380": { it: "Italia", en: "Italy", bg: "Италия" },
+      "428": { it: "Lettonia", en: "Latvia", bg: "Латвия" },
+      "440": { it: "Lituania", en: "Lithuania", bg: "Литва" },
+      "442": { it: "Lussemburgo", en: "Luxembourg", bg: "Люксембург" },
+      "498": { it: "Moldavia", en: "Moldova", bg: "Молдова" },
+      "499": { it: "Montenegro", en: "Montenegro", bg: "Черна гора" },
+      "528": { it: "Paesi Bassi", en: "Netherlands", bg: "Нидерландия" },
+      "807": { it: "Macedonia del Nord", en: "North Macedonia", bg: "Северна Македония" },
+      "578": { it: "Norvegia", en: "Norway", bg: "Норвегия" },
+      "616": { it: "Polonia", en: "Poland", bg: "Полша" },
+      "620": { it: "Portogallo", en: "Portugal", bg: "Португалия" },
+      "642": { it: "Romania", en: "Romania", bg: "Румъния" },
+      "643": { it: "Russia", en: "Russia", bg: "Русия" },
+      "688": { it: "Serbia", en: "Serbia", bg: "Сърбия" },
+      "703": { it: "Slovacchia", en: "Slovakia", bg: "Словакия" },
+      "705": { it: "Slovenia", en: "Slovenia", bg: "Словения" },
+      "724": { it: "Spagna", en: "Spain", bg: "Испания" },
+      "752": { it: "Svezia", en: "Sweden", bg: "Швеция" },
+      "756": { it: "Svizzera", en: "Switzerland", bg: "Швейцария" },
+      "804": { it: "Ucraina", en: "Ukraine", bg: "Украйна" },
+      "826": { it: "Regno Unito", en: "United Kingdom", bg: "Обединеното кралство" },
+      "-99": { it: "Kosovo", en: "Kosovo", bg: "Косово" },
+      // Global
+      "840": { it: "Stati Uniti", en: "United States", bg: "САЩ" },
+      "124": { it: "Canada", en: "Canada", bg: "Канада" },
+      "484": { it: "Messico", en: "Mexico", bg: "Мексико" },
+      "076": { it: "Brasile", en: "Brazil", bg: "Бразилия" },
+      "032": { it: "Argentina", en: "Argentina", bg: "Аржентина" },
+      "156": { it: "Cina", en: "China", bg: "Китай" },
+      "392": { it: "Giappone", en: "Japan", bg: "Япония" },
+      "356": { it: "India", en: "India", bg: "Индия" },
+      "036": { it: "Australia", en: "Australia", bg: "Австралия" },
+      "818": { it: "Egitto", en: "Egypt", bg: "Египет" },
+      "710": { it: "Sudafrica", en: "South Africa", bg: "Южна Африка" }
     };
 
-    const ITALIAN_CAPITALS = [
-      { id: "AO", it: "Aosta", en: "Aosta", coords: [7.315, 45.737] },
-      { id: "TO", it: "Torino", en: "Turin", coords: [7.686, 45.070] },
-      { id: "GE", it: "Genova", en: "Genoa", coords: [8.946, 44.405] },
-      { id: "MI", it: "Milano", en: "Milan", coords: [9.190, 45.464] },
-      { id: "TN", it: "Trento", en: "Trento", coords: [11.121, 46.074] },
-      { id: "VE", it: "Venezia", en: "Venice", coords: [12.315, 45.440] },
-      { id: "TS", it: "Trieste", en: "Trieste", coords: [13.776, 45.649] },
-      { id: "BO", it: "Bologna", en: "Bologna", coords: [11.342, 44.494] },
-      { id: "FI", it: "Firenze", en: "Florence", coords: [11.255, 43.769] },
-      { id: "AN", it: "Ancona", en: "Ancona", coords: [13.518, 43.615] },
-      { id: "PG", it: "Perugia", en: "Perugia", coords: [12.390, 43.110] },
-      { id: "RM", it: "Roma", en: "Rome", coords: [12.496, 41.902] },
-      { id: "AQ", it: "L'Aquila", en: "L'Aquila", coords: [13.399, 42.349] },
-      { id: "CB", it: "Campobasso", en: "Campobasso", coords: [14.656, 41.560] },
-      { id: "NA", it: "Napoli", en: "Naples", coords: [14.268, 40.851] },
-      { id: "BA", it: "Bari", en: "Bari", coords: [16.871, 41.117] },
-      { id: "PZ", it: "Potenza", en: "Potenza", coords: [15.805, 40.640] },
-      { id: "CZ", it: "Catanzaro", en: "Catanzaro", coords: [16.587, 38.909] },
-      { id: "PA", it: "Palermo", en: "Palermo", coords: [13.361, 38.115] },
-      { id: "CA", it: "Cagliari", en: "Cagliari", coords: [9.121, 39.223] }
+    // 50 Stati USA (FIPS Codes)
+    const US_STATES_MAP = {
+      "01": { it: "Alabama", en: "Alabama", bg: "Алабама" },
+      "02": { it: "Alaska", en: "Alaska", bg: "Аляска" },
+      "04": { it: "Arizona", en: "Arizona", bg: "Аризона" },
+      "05": { it: "Arkansas", en: "Arkansas", bg: "Арканзас" },
+      "06": { it: "California", en: "California", bg: "Калифорния" },
+      "08": { it: "Colorado", en: "Colorado", bg: "Колорадо" },
+      "09": { it: "Connecticut", en: "Connecticut", bg: "Кънектикът" },
+      "10": { it: "Delaware", en: "Delaware", bg: "Делауеър" },
+      "12": { it: "Florida", en: "Florida", bg: "Флорида" },
+      "13": { it: "Georgia", en: "Georgia", bg: "Джорджия" },
+      "15": { it: "Hawaii", en: "Hawaii", bg: "Хаваи" },
+      "16": { it: "Idaho", en: "Idaho", bg: "Айдахо" },
+      "17": { it: "Illinois", en: "Illinois", bg: "Илинойс" },
+      "18": { it: "Indiana", en: "Indiana", bg: "Индиана" },
+      "19": { it: "Iowa", en: "Iowa", bg: "Айова" },
+      "20": { it: "Kansas", en: "Kansas", bg: "Канзас" },
+      "21": { it: "Kentucky", en: "Kentucky", bg: "Кентъки" },
+      "22": { it: "Louisiana", en: "Louisiana", bg: "Луизиана" },
+      "23": { it: "Maine", en: "Maine", bg: "Мейн" },
+      "24": { it: "Maryland", en: "Maryland", bg: "Мериленд" },
+      "25": { it: "Massachusetts", en: "Massachusetts", bg: "Масачузетс" },
+      "26": { it: "Michigan", en: "Michigan", bg: "Мичиган" },
+      "27": { it: "Minnesota", en: "Minnesota", bg: "Минесота" },
+      "28": { it: "Mississippi", en: "Mississippi", bg: "Мисисипи" },
+      "29": { it: "Missouri", en: "Missouri", bg: "Мисури" },
+      "30": { it: "Montana", en: "Montana", bg: "Монтана" },
+      "31": { it: "Nebraska", en: "Nebraska", bg: "Небраска" },
+      "32": { it: "Nevada", en: "Nevada", bg: "Невада" },
+      "33": { it: "New Hampshire", en: "New Hampshire", bg: "Ню Хемпшър" },
+      "34": { it: "New Jersey", en: "New Jersey", bg: "Ню Джърси" },
+      "35": { it: "New Mexico", en: "New Mexico", bg: "Ню Мексико" },
+      "36": { it: "New York", en: "New York", bg: "Ню Йорк" },
+      "37": { it: "North Carolina", en: "North Carolina", bg: "Северна Каролина" },
+      "38": { it: "North Dakota", en: "North Dakota", bg: "Северна Дакота" },
+      "39": { it: "Ohio", en: "Ohio", bg: "Охайо" },
+      "40": { it: "Oklahoma", en: "Oklahoma", bg: "Оклахома" },
+      "41": { it: "Oregon", en: "Oregon", bg: "Орегон" },
+      "42": { it: "Pennsylvania", en: "Pennsylvania", bg: "Пенсилвания" },
+      "44": { it: "Rhode Island", en: "Rhode Island", bg: "Роуд Айлънд" },
+      "45": { it: "South Carolina", en: "South Carolina", bg: "Южна Каролина" },
+      "46": { it: "South Dakota", en: "South Dakota", bg: "Южна Дакота" },
+      "47": { it: "Tennessee", en: "Tennessee", bg: "Тенеси" },
+      "48": { it: "Texas", en: "Texas", bg: "Тексас" },
+      "49": { it: "Utah", en: "Utah", bg: "Юта" },
+      "50": { it: "Vermont", en: "Vermont", bg: "Върмонт" },
+      "51": { it: "Virginia", en: "Virginia", bg: "Вирджиния" },
+      "53": { it: "Washington", en: "Washington", bg: "Вашингтон" },
+      "54": { it: "West Virginia", en: "West Virginia", bg: "Западна Вирджиния" },
+      "55": { it: "Wisconsin", en: "Wisconsin", bg: "Уисконсин" },
+      "56": { it: "Wyoming", en: "Wyoming", bg: "Уайоминг" }
+    };
+
+    // Italia Estesa: Capoluoghi e Città/Province importanti
+    const EXTENDED_ITALIAN_CITIES = [
+      { id: "MI", it: "Milano", en: "Milan", bg: "Милано", coords: [9.190, 45.464] },
+      { id: "CO", it: "Como", en: "Como", bg: "Комо", coords: [9.085, 45.808] },
+      { id: "BG", it: "Bergamo", en: "Bergamo", bg: "Бергамо", coords: [9.670, 45.698] },
+      { id: "BS", it: "Brescia", en: "Brescia", bg: "Бреша", coords: [10.220, 45.541] },
+      { id: "MB", it: "Monza", en: "Monza", bg: "Монца", coords: [9.274, 45.584] },
+      { id: "TO", it: "Torino", en: "Turin", bg: "Торино", coords: [7.686, 45.070] },
+      { id: "AO", it: "Aosta", en: "Aosta", bg: "Аоста", coords: [7.315, 45.737] },
+      { id: "GE", it: "Genova", en: "Genoa", bg: "Генуа", coords: [8.946, 44.405] },
+      { id: "SP", it: "La Spezia", en: "La Spezia", bg: "Ла Специя", coords: [9.824, 44.102] },
+      { id: "TN", it: "Trento", en: "Trento", bg: "Тренто", coords: [11.121, 46.074] },
+      { id: "BZ", it: "Bolzano", en: "Bolzano", bg: "Болцано", coords: [11.354, 46.498] },
+      { id: "VE", it: "Venezia", en: "Venice", bg: "Венеция", coords: [12.315, 45.440] },
+      { id: "VR", it: "Verona", en: "Verona", bg: "Верона", coords: [10.991, 45.438] },
+      { id: "PD", it: "Padova", en: "Padua", bg: "Падуа", coords: [11.876, 45.406] },
+      { id: "TS", it: "Trieste", en: "Trieste", bg: "Триест", coords: [13.776, 45.649] },
+      { id: "UD", it: "Udine", en: "Udine", bg: "Удине", coords: [13.234, 46.063] },
+      { id: "BO", it: "Bologna", en: "Bologna", bg: "Болоня", coords: [11.342, 44.494] },
+      { id: "PR", it: "Parma", en: "Parma", bg: "Парма", coords: [10.327, 44.801] },
+      { id: "RA", it: "Ravenna", en: "Ravenna", bg: "Равена", coords: [12.201, 44.418] },
+      { id: "RN", it: "Rimini", en: "Rimini", bg: "Римини", coords: [12.569, 44.059] },
+      { id: "FI", it: "Firenze", en: "Florence", bg: "Флоренция", coords: [11.255, 43.769] },
+      { id: "PI", it: "Pisa", en: "Pisa", bg: "Пиза", coords: [10.401, 43.722] },
+      { id: "SI", it: "Siena", en: "Siena", bg: "Сиена", coords: [11.330, 43.318] },
+      { id: "AN", it: "Ancona", en: "Ancona", bg: "Анкона", coords: [13.518, 43.615] },
+      { id: "PG", it: "Perugia", en: "Perugia", bg: "Перуджа", coords: [12.390, 43.110] },
+      { id: "RM", it: "Roma", en: "Rome", bg: "Рим", coords: [12.496, 41.902] },
+      { id: "VT", it: "Viterbo", en: "Viterbo", bg: "Витербо", coords: [12.107, 42.417] },
+      { id: "AQ", it: "L'Aquila", en: "L'Aquila", bg: "Акуила", coords: [13.399, 42.349] },
+      { id: "PE", it: "Pescara", en: "Pescara", bg: "Пескара", coords: [14.214, 42.461] },
+      { id: "CB", it: "Campobasso", en: "Campobasso", bg: "Кампобасо", coords: [14.656, 41.560] },
+      { id: "NA", it: "Napoli", en: "Naples", bg: "Неапол", coords: [14.268, 40.851] },
+      { id: "SA", it: "Salerno", en: "Salerno", bg: "Салерно", coords: [14.768, 40.682] },
+      { id: "BA", it: "Bari", en: "Bari", bg: "Бари", coords: [16.871, 41.117] },
+      { id: "LE", it: "Lecce", en: "Lecce", bg: "Лече", coords: [18.174, 40.354] },
+      { id: "PZ", it: "Potenza", en: "Potenza", bg: "Потенца", coords: [15.805, 40.640] },
+      { id: "MT", it: "Matera", en: "Matera", bg: "Матера", coords: [16.604, 40.666] },
+      { id: "CZ", it: "Catanzaro", en: "Catanzaro", bg: "Катандзаро", coords: [16.587, 38.909] },
+      { id: "RC", it: "Reggio Calabria", en: "Reggio Calabria", bg: "Реджо Калабрия", coords: [15.651, 38.111] },
+      { id: "PA", it: "Palermo", en: "Palermo", bg: "Палермо", coords: [13.361, 38.115] },
+      { id: "CT", it: "Catania", en: "Catania", bg: "Катания", coords: [15.087, 37.507] },
+      { id: "ME", it: "Messina", en: "Messina", bg: "Месина", coords: [15.555, 38.193] },
+      { id: "CA", it: "Cagliari", en: "Cagliari", bg: "Каляри", coords: [9.121, 39.223] },
+      { id: "SS", it: "Sassari", en: "Sassari", bg: "Сасари", coords: [8.555, 40.725] }
     ];
 
     let currentLang = "it";
     let currentMode = "europe";
     let cachedWorldData = null;
+    let cachedUsaData = null;
     let cachedItalyGeo = null;
 
     let queue = [];
@@ -541,9 +631,10 @@
     let scoreErrors = 0;
     let scoreCompleted = 0;
     let totalTargetCount = 0;
+    let solvedIds = new Set();
     let timerInterval = null;
     let startTime = null;
-    let isProcessingGuess = false;
+    let isProcessing = false;
 
     const svg = d3.select("#map-svg");
     const gMap = svg.append("g").attr("id", "map-group");
@@ -558,6 +649,7 @@
       svg.transition().duration(300).call(zoomBehavior.transform, d3.zoomIdentity);
     }
 
+    // Gestione Lingue
     document.querySelectorAll(".lang-opt").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelectorAll(".lang-opt").forEach(b => b.classList.remove("active"));
@@ -576,6 +668,15 @@
       document.getElementById("lbl-time").innerText = strings.tempo;
       document.getElementById("menu-desc").innerText = strings.desc;
       document.getElementById("btn-replay").innerText = strings.rigioca;
+
+      document.getElementById("m-europe").innerText = strings.modes.europe;
+      document.getElementById("m-usa").innerText = strings.modes.usa;
+      document.getElementById("m-asia").innerText = strings.modes.asia;
+      document.getElementById("m-africa").innerText = strings.modes.africa;
+      document.getElementById("m-americas").innerText = strings.modes.americas;
+      document.getElementById("m-world").innerText = strings.modes.world;
+      document.getElementById("m-italy").innerText = strings.modes.italy;
+
       if (currentTarget) {
         document.getElementById("target-name").innerText = currentTarget[currentLang];
       }
@@ -606,6 +707,8 @@
       try {
         if (mode === "italy") {
           await renderItalyMap();
+        } else if (mode === "usa") {
+          await renderUsaMap();
         } else {
           await renderWorldMap(mode);
         }
@@ -613,13 +716,13 @@
         initGameStats();
       } catch (err) {
         console.error(err);
-        alert("Errore caricamento mappa.");
+        alert("Errore nel caricamento dei dati della mappa.");
       } finally {
         loader.style.display = "none";
       }
     }
 
-    // Modalità Capoluoghi d'Italia
+    // Modalità Italia Estesa
     async function renderItalyMap() {
       gMap.selectAll("*").remove();
       const rect = svg.node().getBoundingClientRect();
@@ -634,7 +737,6 @@
       const projection = d3.geoMercator().fitExtent([[25, 80], [width - 25, height - 30]], cachedItalyGeo);
       const pathGenerator = d3.geoPath().projection(projection);
 
-      // Sfondo regioni Italia
       gMap.selectAll("path.land")
         .data(cachedItalyGeo.features)
         .enter()
@@ -643,21 +745,21 @@
         .attr("d", pathGenerator)
         .style("pointer-events", "none");
 
-      queue = [...ITALIAN_CAPITALS].sort(() => Math.random() - 0.5);
+      queue = [...EXTENDED_ITALIAN_CITIES].sort(() => Math.random() - 0.5);
       totalTargetCount = queue.length;
+      solvedIds.clear();
 
-      // Pin compatti ed eleganti (r=5.5) per le città
-      const markerGroup = gMap.append("g").attr("id", "markers-layer");
+      const markerLayer = gMap.append("g").attr("id", "markers-layer");
 
-      markerGroup.selectAll("circle.capital-marker")
-        .data(ITALIAN_CAPITALS)
+      markerLayer.selectAll("circle.capital-marker")
+        .data(EXTENDED_ITALIAN_CITIES)
         .enter()
         .append("circle")
         .attr("class", "capital-marker")
         .attr("id", d => `target-${d.id}`)
         .attr("cx", d => projection(d.coords)[0])
         .attr("cy", d => projection(d.coords)[1])
-        .attr("r", 5.5)
+        .attr("r", 5)
         .attr("fill", "#f59e0b")
         .attr("stroke", "#090a0f")
         .on("click", (e, d) => handleGuess(d.id));
@@ -665,7 +767,51 @@
       resetZoom();
     }
 
-    // Modalità Nazioni (Europa e Mondo)
+    // Modalità 50 Stati USA
+    async function renderUsaMap() {
+      gMap.selectAll("*").remove();
+      const rect = svg.node().getBoundingClientRect();
+      const width = rect.width || window.innerWidth;
+      const height = rect.height || window.innerHeight;
+
+      if (!cachedUsaData) {
+        const res = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json");
+        cachedUsaData = await res.json();
+      }
+
+      const states = topojson.feature(cachedUsaData, cachedUsaData.objects.states).features;
+      const validStates = states.filter(s => US_STATES_MAP[String(s.id).padStart(2, "0")]);
+
+      const projection = d3.geoAlbersUsa().fitExtent([[25, 80], [width - 25, height - 30]], {
+        type: "FeatureCollection",
+        features: validStates
+      });
+      const pathGenerator = d3.geoPath().projection(projection);
+
+      queue = [];
+      validStates.forEach(s => {
+        const id = String(s.id).padStart(2, "0");
+        const meta = US_STATES_MAP[id];
+        queue.push({ id: id, it: meta.it, en: meta.en, bg: meta.bg });
+      });
+
+      queue.sort(() => Math.random() - 0.5);
+      totalTargetCount = queue.length;
+      solvedIds.clear();
+
+      gMap.selectAll("path.land")
+        .data(validStates)
+        .enter()
+        .append("path")
+        .attr("class", "land")
+        .attr("id", d => `target-${String(d.id).padStart(2, "0")}`)
+        .attr("d", pathGenerator)
+        .on("click", (e, d) => handleGuess(String(d.id).padStart(2, "0")));
+
+      resetZoom();
+    }
+
+    // Modalità Mondo / Europa
     async function renderWorldMap(mode) {
       gMap.selectAll("*").remove();
       const rect = svg.node().getBoundingClientRect();
@@ -679,17 +825,16 @@
 
       let features = topojson.feature(cachedWorldData, cachedWorldData.objects.countries).features;
 
-      // Lista completa e verificata ISO Europa (inclusi Balcani, Grecia, Microstati)
+      // Lista Europa Continentale pulita (esclusi microstati e isole minori)
       const europeIso = new Set([
-        "008","020","040","056","070","100","112","191","196","203","208","233","246","250",
-        "276","300","348","352","372","380","428","438","440","442","470","498","492","499",
-        "528","578","616","620","642","674","688","703","705","724","752","756","804","807","826","-99"
+        "008","040","056","070","100","112","191","203","208","233","246","250",
+        "276","300","348","372","380","428","440","442","498","499",
+        "528","578","616","620","642","688","703","705","724","752","756","804","807","826","-99"
       ]);
 
       if (mode === "europe") {
         features = features.filter(f => europeIso.has(String(f.id).padStart(3, "0")) || europeIso.has(String(f.id)));
       } else if (mode !== "world") {
-        // Altri continenti
         const continentCodes = {
           asia: ["004","050","064","104","116","156","356","360","364","368","376","392","398","400","408","410","414","417","418","422","458","462","496","512","524","586","608","634","682","702","760","762","764","792","795","860","704"],
           africa: ["012","024","120","132","178","204","262","288","324","384","404","430","434","478","504","508","516","562","566","686","710","728","729","768","788","800","818","834","894"],
@@ -700,7 +845,6 @@
         features = features.filter(f => allowed.has(String(f.id).padStart(3, "0")));
       }
 
-      // Proiezione con padding ideale
       const projection = d3.geoMercator().fitExtent([[20, 80], [width - 20, height - 30]], {
         type: "FeatureCollection",
         features: features
@@ -710,19 +854,14 @@
       queue = [];
       features.forEach(f => {
         const id = String(f.id).padStart(3, "0");
-        const meta = COUNTRY_NAMES[id] || { it: f.properties?.name || id, en: f.properties?.name || id };
-        queue.push({
-          id: id,
-          it: meta.it,
-          en: meta.en
-        });
+        const meta = COUNTRY_NAMES[id] || { it: f.properties?.name || id, en: f.properties?.name || id, bg: f.properties?.name || id };
+        queue.push({ id: id, it: meta.it, en: meta.en, bg: meta.bg });
       });
 
-      // Mescola la coda di gioco
       queue.sort(() => Math.random() - 0.5);
       totalTargetCount = queue.length;
+      solvedIds.clear();
 
-      // Rendering confini vettoriali ad alta definizione
       gMap.selectAll("path.land")
         .data(features)
         .enter()
@@ -738,7 +877,7 @@
     function initGameStats() {
       scoreErrors = 0;
       scoreCompleted = 0;
-      isProcessingGuess = false;
+      isProcessing = false;
       document.getElementById("stat-errors").innerText = "0";
       document.getElementById("stat-progress").innerText = `0/${totalTargetCount}`;
 
@@ -761,41 +900,47 @@
       }
       currentTarget = queue.shift();
       document.getElementById("target-name").innerText = currentTarget[currentLang];
-      isProcessingGuess = false;
+      isProcessing = false;
     }
 
-    // Regola originale: un tentativo. Se sbagli si accende di blu per 2.5s e poi si va avanti.
     function handleGuess(clickedId) {
-      if (!currentTarget || isProcessingGuess) return;
+      if (!currentTarget || isProcessing) return;
+
+      // Se l'elemento è già stato indovinato (è verde), ignora il clic senza penalità
+      if (solvedIds.has(clickedId)) return;
 
       const clickedEl = document.getElementById(`target-${clickedId}`);
       const correctEl = document.getElementById(`target-${currentTarget.id}`);
 
       if (clickedId === currentTarget.id) {
-        // Risposta esatta
+        // Corretto
+        solvedIds.add(clickedId);
         if (clickedEl) clickedEl.classList.add("correct");
         scoreCompleted++;
         document.getElementById("stat-progress").innerText = `${scoreCompleted}/${totalTargetCount}`;
         nextTarget();
       } else {
-        // Errore: lampeggia di rosso l'errore, evidenzia la soluzione corretta in blu per 2.5s
-        isProcessingGuess = true;
+        // Errato: conta errore, lampeggia in blu il target corretto per 2s e rimettilo in fondo alla coda
+        isProcessing = true;
         scoreErrors++;
         document.getElementById("stat-errors").innerText = scoreErrors;
 
         if (clickedEl) {
           clickedEl.classList.add("wrong-flash");
-          setTimeout(() => clickedEl.classList.remove("wrong-flash"), 400);
+          setTimeout(() => clickedEl.classList.remove("wrong-flash"), 350);
         }
 
         if (correctEl) {
           correctEl.classList.add("revealed");
         }
 
+        // Si rimette il paese mancato in coda per farlo uscire di nuovo
+        queue.push(currentTarget);
+
         setTimeout(() => {
           if (correctEl) correctEl.classList.remove("revealed");
           nextTarget();
-        }, 2500);
+        }, 2000);
       }
     }
 
@@ -814,6 +959,7 @@
       const modal = document.getElementById("menu-modal");
       if (modal.style.display === "none") {
         if (currentMode === "italy") renderItalyMap();
+        else if (currentMode === "usa") renderUsaMap();
         else renderWorldMap(currentMode);
       }
     });

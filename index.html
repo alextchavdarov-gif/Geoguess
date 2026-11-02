@@ -8,18 +8,17 @@
   <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
   <style>
     :root {
-      --bg: #090a0f;
-      --panel: rgba(22, 27, 34, 0.88);
+      --bg: #0b0f19;
+      --panel: rgba(17, 24, 39, 0.85);
       --border: rgba(255, 255, 255, 0.12);
       --accent: #38bdf8;
-      --accent-hover: #0ea5e9;
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --correct: #10b981;
       --wrong: #ef4444;
+      --reveal: #3b82f6;
       --land-fill: #1e293b;
-      --land-stroke: #334155;
-      --land-hover: #3b82f6;
+      --land-stroke: #475569;
     }
 
     * {
@@ -29,6 +28,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       user-select: none;
       -webkit-user-select: none;
+      touch-action: manipulation;
     }
 
     body, html {
@@ -63,29 +63,29 @@
 
     .glass {
       background: var(--panel);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
     }
 
     /* Top HUD */
     #hud-top {
       position: absolute;
-      top: 14px;
-      left: 14px;
-      right: 14px;
+      top: 12px;
+      left: 12px;
+      right: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 18px;
+      padding: 8px 16px;
       z-index: 20;
     }
 
     .hud-group {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
     }
 
     .stat-badge {
@@ -95,88 +95,121 @@
     }
 
     .stat-val {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       color: var(--accent);
     }
 
     .stat-lbl {
-      font-size: 10px;
+      font-size: 9px;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
-    /* Target Prompt */
+    /* Target Bar */
     #target-container {
       position: absolute;
-      top: 80px;
+      top: 72px;
       left: 50%;
       transform: translateX(-50%);
-      padding: 12px 28px;
+      padding: 10px 24px;
       text-align: center;
       z-index: 20;
-      min-width: 260px;
+      min-width: 240px;
       pointer-events: none;
     }
 
     #target-label {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 2px;
     }
 
     #target-name {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 800;
       color: #fff;
+      margin-top: 2px;
     }
 
-    /* Map Paths */
+    /* Path Styling - Non scaling stroke keeps borders ultra crisp */
     .land {
       fill: var(--land-fill);
       stroke: var(--land-stroke);
-      stroke-width: 0.8px;
-      transition: fill 0.2s, stroke 0.2s;
+      stroke-width: 0.7px;
+      vector-effect: non-scaling-stroke;
       cursor: pointer;
+      transition: fill 0.15s ease-out;
     }
 
     .land:hover {
-      fill: var(--land-hover);
+      fill: #334155;
     }
 
     .land.correct {
       fill: var(--correct) !important;
-      stroke: #059669;
     }
 
     .land.wrong-flash {
       fill: var(--wrong) !important;
     }
 
-    .capital-circle {
-      fill: #f59e0b;
-      stroke: #fff;
-      stroke-width: 1.5px;
+    .land.revealed {
+      fill: var(--reveal) !important;
+      animation: pulse-reveal 0.6s infinite alternate;
+    }
+
+    @keyframes pulse-reveal {
+      from { fill: #2563eb; }
+      to { fill: #60a5fa; }
+    }
+
+    /* Capitals in Italy Mode */
+    .capital-marker {
       cursor: pointer;
-      transition: transform 0.2s, fill 0.2s;
+      stroke-width: 1.5px;
+      vector-effect: non-scaling-stroke;
+      transition: r 0.2s;
     }
 
-    .capital-circle:hover {
-      fill: #ef4444;
-      transform: scale(1.3);
+    .capital-marker.correct {
+      fill: var(--correct) !important;
+      stroke: #fff;
     }
 
-    /* UI Buttons & Controls */
+    .capital-marker.revealed {
+      fill: var(--reveal) !important;
+      stroke: #fff;
+      animation: pulse-dot 0.5s infinite alternate;
+    }
+
+    @keyframes pulse-dot {
+      from { fill: #2563eb; }
+      to { fill: #93c5fd; }
+    }
+
+    .capital-label {
+      font-size: 10px;
+      fill: #e2e8f0;
+      font-weight: 600;
+      pointer-events: none;
+      paint-order: stroke;
+      stroke: #090a0f;
+      stroke-width: 2.5px;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Buttons */
     .btn {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border);
       color: var(--text);
-      padding: 8px 14px;
+      padding: 7px 12px;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
@@ -192,8 +225,8 @@
 
     .controls-overlay {
       position: absolute;
-      bottom: 24px;
-      right: 20px;
+      bottom: 20px;
+      right: 16px;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -201,17 +234,17 @@
     }
 
     .ctrl-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
     }
 
-    /* Modals & Dialogs */
+    /* Dialogs */
     .modal-overlay {
       position: absolute;
       inset: 0;
@@ -228,21 +261,21 @@
     .modal-content {
       width: 100%;
       max-width: 440px;
-      padding: 28px 24px;
+      padding: 24px;
       text-align: center;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
     }
 
     .modal-title {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 800;
       letter-spacing: -0.5px;
     }
 
     .modal-subtitle {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-muted);
       line-height: 1.4;
     }
@@ -258,7 +291,7 @@
     }
 
     .lang-opt {
-      padding: 6px 16px;
+      padding: 5px 14px;
       border-radius: 7px;
       font-size: 12px;
       font-weight: 600;
@@ -275,13 +308,12 @@
     .mode-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 6px;
+      gap: 8px;
     }
 
     .mode-btn {
-      padding: 14px 10px;
-      font-size: 13px;
+      padding: 12px 8px;
+      font-size: 12px;
       font-weight: 600;
       border-radius: 10px;
       background: rgba(255, 255, 255, 0.04);
@@ -306,7 +338,6 @@
       display: none;
       font-size: 13px;
       color: var(--accent);
-      margin-top: 8px;
     }
   </style>
 </head>
@@ -380,16 +411,15 @@
     <div id="end-modal" class="modal-overlay" style="display: none;">
       <div class="modal-content glass">
         <div class="modal-title" id="end-title">Vittoria!</div>
-        <div class="modal-subtitle" id="end-stats">Hai completato la mappa!</div>
+        <div class="modal-subtitle" id="end-stats">Partita terminata!</div>
         <button id="btn-replay" class="btn" style="justify-content: center; padding: 12px; margin-top: 10px;">
-          Gioca Ancora
+          Rigioca
         </button>
       </div>
     </div>
   </div>
 
   <script>
-    // Localized Strings
     const I18N = {
       it: {
         menu: "Menu",
@@ -398,10 +428,10 @@
         errori: "Errori",
         tempo: "Tempo",
         desc: "Seleziona la lingua e la modalità di gioco per iniziare.",
-        vittoria: "Complimenti!",
-        completato: "Mappa completata in {time} con {errors} errori.",
+        vittoria: "Partita Terminata!",
+        completato: "Hai completato la serie in {time} con {errors} errori.",
         rigioca: "Torna al Menu",
-        loading: "Caricamento dati mappa..."
+        loading: "Scaricamento confini..."
       },
       en: {
         menu: "Menu",
@@ -410,66 +440,124 @@
         errori: "Errors",
         tempo: "Time",
         desc: "Choose a game mode and test your geography skills.",
-        vittoria: "Well Done!",
+        vittoria: "Game Finished!",
         completato: "Completed in {time} with {errors} errors.",
-        rigioca: "Return to Menu",
-        loading: "Loading map data..."
+        rigioca: "Back to Menu",
+        loading: "Downloading boundaries..."
       }
     };
 
-    // Regional Capitals of Italy
+    // Dizionario ISO numerico completo per Europa e altri continenti
+    const COUNTRY_NAMES = {
+      "008": { it: "Albania", en: "Albania" },
+      "020": { it: "Andorra", en: "Andorra" },
+      "040": { it: "Austria", en: "Austria" },
+      "056": { it: "Belgio", en: "Belgium" },
+      "070": { it: "Bosnia ed Erzegovina", en: "Bosnia and Herzegovina" },
+      "100": { it: "Bulgaria", en: "Bulgaria" },
+      "112": { it: "Bielorussia", en: "Belarus" },
+      "191": { it: "Croazia", en: "Croatia" },
+      "196": { it: "Cipro", en: "Cyprus" },
+      "203": { it: "Repubblica Ceca", en: "Czech Republic" },
+      "208": { it: "Danimarca", en: "Denmark" },
+      "233": { it: "Estonia", en: "Estonia" },
+      "246": { it: "Finlandia", en: "Finland" },
+      "250": { it: "Francia", en: "France" },
+      "276": { it: "Germania", en: "Germany" },
+      "300": { it: "Grecia", en: "Greece" },
+      "348": { it: "Ungheria", en: "Hungary" },
+      "352": { it: "Islanda", en: "Iceland" },
+      "372": { it: "Irlanda", en: "Ireland" },
+      "380": { it: "Italia", en: "Italy" },
+      "428": { it: "Lettonia", en: "Latvia" },
+      "438": { it: "Liechtenstein", en: "Liechtenstein" },
+      "440": { it: "Lituania", en: "Lithuania" },
+      "442": { it: "Lussemburgo", en: "Luxembourg" },
+      "470": { it: "Malta", en: "Malta" },
+      "498": { it: "Moldavia", en: "Moldova" },
+      "492": { it: "Monaco", en: "Monaco" },
+      "499": { it: "Montenegro", en: "Montenegro" },
+      "528": { it: "Paesi Bassi", en: "Netherlands" },
+      "807": { it: "Macedonia del Nord", en: "North Macedonia" },
+      "578": { it: "Norvegia", en: "Norway" },
+      "616": { it: "Polonia", en: "Poland" },
+      "620": { it: "Portogallo", en: "Portugal" },
+      "642": { it: "Romania", en: "Romania" },
+      "643": { it: "Russia", en: "Russia" },
+      "674": { it: "San Marino", en: "San Marino" },
+      "688": { it: "Serbia", en: "Serbia" },
+      "703": { it: "Slovacchia", en: "Slovakia" },
+      "705": { it: "Slovenia", en: "Slovenia" },
+      "724": { it: "Spagna", en: "Spain" },
+      "752": { it: "Svezia", en: "Sweden" },
+      "756": { it: "Svizzera", en: "Switzerland" },
+      "804": { it: "Ucraina", en: "Ukraine" },
+      "826": { it: "Regno Unito", en: "United Kingdom" },
+      "-99": { it: "Kosovo", en: "Kosovo" },
+      // Extra Global
+      "840": { it: "Stati Uniti", en: "United States" },
+      "124": { it: "Canada", en: "Canada" },
+      "484": { it: "Messico", en: "Mexico" },
+      "076": { it: "Brasile", en: "Brazil" },
+      "032": { it: "Argentina", en: "Argentina" },
+      "156": { it: "Cina", en: "China" },
+      "392": { it: "Giappone", en: "Japan" },
+      "356": { it: "India", en: "India" },
+      "036": { it: "Australia", en: "Australia" },
+      "818": { it: "Egitto", en: "Egypt" },
+      "710": { it: "Sudafrica", en: "South Africa" }
+    };
+
     const ITALIAN_CAPITALS = [
-      { id: "AO", name_it: "Aosta", name_en: "Aosta", coords: [7.313, 45.737] },
-      { id: "TO", name_it: "Torino", name_en: "Turin", coords: [7.686, 45.070] },
-      { id: "GE", name_it: "Genova", name_en: "Genoa", coords: [8.946, 44.405] },
-      { id: "MI", name_it: "Milano", name_en: "Milan", coords: [9.190, 45.464] },
-      { id: "TN", name_it: "Trento", name_en: "Trento", coords: [11.121, 46.074] },
-      { id: "VE", name_it: "Venezia", name_en: "Venice", coords: [12.315, 45.440] },
-      { id: "TS", name_it: "Trieste", name_en: "Trieste", coords: [13.776, 45.649] },
-      { id: "BO", name_it: "Bologna", name_en: "Bologna", coords: [11.342, 44.494] },
-      { id: "FI", name_it: "Firenze", name_en: "Florence", coords: [11.255, 43.769] },
-      { id: "AN", name_it: "Ancona", name_en: "Ancona", coords: [13.518, 43.615] },
-      { id: "PG", name_it: "Perugia", name_en: "Perugia", coords: [12.390, 43.110] },
-      { id: "RM", name_it: "Roma", name_en: "Rome", coords: [12.496, 41.902] },
-      { id: "AQ", name_it: "L'Aquila", name_en: "L'Aquila", coords: [13.399, 42.349] },
-      { id: "CB", name_it: "Campobasso", name_en: "Campobasso", coords: [14.656, 41.560] },
-      { id: "NA", name_it: "Napoli", name_en: "Naples", coords: [14.268, 40.851] },
-      { id: "BA", name_it: "Bari", name_en: "Bari", coords: [16.871, 41.117] },
-      { id: "PZ", name_it: "Potenza", name_en: "Potenza", coords: [15.805, 40.640] },
-      { id: "CZ", name_it: "Catanzaro", name_en: "Catanzaro", coords: [16.587, 38.909] },
-      { id: "PA", name_it: "Palermo", name_en: "Palermo", coords: [13.361, 38.115] },
-      { id: "CA", name_it: "Cagliari", name_en: "Cagliari", coords: [9.121, 39.223] }
+      { id: "AO", it: "Aosta", en: "Aosta", coords: [7.315, 45.737] },
+      { id: "TO", it: "Torino", en: "Turin", coords: [7.686, 45.070] },
+      { id: "GE", it: "Genova", en: "Genoa", coords: [8.946, 44.405] },
+      { id: "MI", it: "Milano", en: "Milan", coords: [9.190, 45.464] },
+      { id: "TN", it: "Trento", en: "Trento", coords: [11.121, 46.074] },
+      { id: "VE", it: "Venezia", en: "Venice", coords: [12.315, 45.440] },
+      { id: "TS", it: "Trieste", en: "Trieste", coords: [13.776, 45.649] },
+      { id: "BO", it: "Bologna", en: "Bologna", coords: [11.342, 44.494] },
+      { id: "FI", it: "Firenze", en: "Florence", coords: [11.255, 43.769] },
+      { id: "AN", it: "Ancona", en: "Ancona", coords: [13.518, 43.615] },
+      { id: "PG", it: "Perugia", en: "Perugia", coords: [12.390, 43.110] },
+      { id: "RM", it: "Roma", en: "Rome", coords: [12.496, 41.902] },
+      { id: "AQ", it: "L'Aquila", en: "L'Aquila", coords: [13.399, 42.349] },
+      { id: "CB", it: "Campobasso", en: "Campobasso", coords: [14.656, 41.560] },
+      { id: "NA", it: "Napoli", en: "Naples", coords: [14.268, 40.851] },
+      { id: "BA", it: "Bari", en: "Bari", coords: [16.871, 41.117] },
+      { id: "PZ", it: "Potenza", en: "Potenza", coords: [15.805, 40.640] },
+      { id: "CZ", it: "Catanzaro", en: "Catanzaro", coords: [16.587, 38.909] },
+      { id: "PA", it: "Palermo", en: "Palermo", coords: [13.361, 38.115] },
+      { id: "CA", it: "Cagliari", en: "Cagliari", coords: [9.121, 39.223] }
     ];
 
-    // State Variables
     let currentLang = "it";
     let currentMode = "europe";
     let cachedWorldData = null;
     let cachedItalyGeo = null;
-    let activeTargets = [];
+
+    let queue = [];
     let currentTarget = null;
     let scoreErrors = 0;
     let scoreCompleted = 0;
     let totalTargetCount = 0;
     let timerInterval = null;
     let startTime = null;
+    let isProcessingGuess = false;
 
-    // SVG & D3 Projections
     const svg = d3.select("#map-svg");
     const gMap = svg.append("g").attr("id", "map-group");
-    const zoomBehavior = d3.zoom().scaleExtent([0.8, 20]).on("zoom", (e) => gMap.attr("transform", e.transform));
+    const zoomBehavior = d3.zoom().scaleExtent([0.6, 25]).on("zoom", (e) => gMap.attr("transform", e.transform));
     svg.call(zoomBehavior);
 
-    // Zoom Controls
-    document.getElementById("zoom-in").addEventListener("click", () => svg.transition().duration(250).call(zoomBehavior.scaleBy, 1.3));
-    document.getElementById("zoom-out").addEventListener("click", () => svg.transition().duration(250).call(zoomBehavior.scaleBy, 0.7));
+    document.getElementById("zoom-in").addEventListener("click", () => svg.transition().duration(200).call(zoomBehavior.scaleBy, 1.4));
+    document.getElementById("zoom-out").addEventListener("click", () => svg.transition().duration(200).call(zoomBehavior.scaleBy, 0.7));
     document.getElementById("zoom-reset").addEventListener("click", resetZoom);
 
     function resetZoom() {
-      svg.transition().duration(350).call(zoomBehavior.transform, d3.zoomIdentity);
+      svg.transition().duration(300).call(zoomBehavior.transform, d3.zoomIdentity);
     }
 
-    // Language Toggle
     document.querySelectorAll(".lang-opt").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelectorAll(".lang-opt").forEach(b => b.classList.remove("active"));
@@ -489,11 +577,10 @@
       document.getElementById("menu-desc").innerText = strings.desc;
       document.getElementById("btn-replay").innerText = strings.rigioca;
       if (currentTarget) {
-        document.getElementById("target-name").innerText = currentTarget["name_" + currentLang] || currentTarget.name;
+        document.getElementById("target-name").innerText = currentTarget[currentLang];
       }
     }
 
-    // Modal Triggers
     document.getElementById("btn-menu").addEventListener("click", () => {
       document.getElementById("menu-modal").style.display = "flex";
       clearInterval(timerInterval);
@@ -511,11 +598,10 @@
       });
     });
 
-    // Start Game Handler
     async function startGame(mode) {
-      const loading = document.getElementById("loading-indicator");
-      loading.innerText = I18N[currentLang].loading;
-      loading.style.display = "block";
+      const loader = document.getElementById("loading-indicator");
+      loader.innerText = I18N[currentLang].loading;
+      loader.style.display = "block";
 
       try {
         if (mode === "italy") {
@@ -526,14 +612,14 @@
         document.getElementById("menu-modal").style.display = "none";
         initGameStats();
       } catch (err) {
-        console.error("Errore caricamento mappa:", err);
-        alert("Errore nel download dei dati della mappa. Verifica la connessione.");
+        console.error(err);
+        alert("Errore caricamento mappa.");
       } finally {
-        loading.style.display = "none";
+        loader.style.display = "none";
       }
     }
 
-    // Render Italy Game
+    // Modalità Capoluoghi d'Italia
     async function renderItalyMap() {
       gMap.selectAll("*").remove();
       const rect = svg.node().getBoundingClientRect();
@@ -541,15 +627,14 @@
       const height = rect.height || window.innerHeight;
 
       if (!cachedItalyGeo) {
-        // High quality fallback GeoJSON of Italian regions
         const res = await fetch("https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson");
         cachedItalyGeo = await res.json();
       }
 
-      const projection = d3.geoMercator().fitExtent([[30, 90], [width - 30, height - 30]], cachedItalyGeo);
+      const projection = d3.geoMercator().fitExtent([[25, 80], [width - 25, height - 30]], cachedItalyGeo);
       const pathGenerator = d3.geoPath().projection(projection);
 
-      // Render Region Outlines
+      // Sfondo regioni Italia
       gMap.selectAll("path.land")
         .data(cachedItalyGeo.features)
         .enter()
@@ -558,26 +643,29 @@
         .attr("d", pathGenerator)
         .style("pointer-events", "none");
 
-      // Setup Capitals as Target Points
-      activeTargets = [...ITALIAN_CAPITALS];
-      totalTargetCount = activeTargets.length;
+      queue = [...ITALIAN_CAPITALS].sort(() => Math.random() - 0.5);
+      totalTargetCount = queue.length;
 
-      // Render Interactive Capital Dots
-      gMap.selectAll("circle.capital")
+      // Pin compatti ed eleganti (r=5.5) per le città
+      const markerGroup = gMap.append("g").attr("id", "markers-layer");
+
+      markerGroup.selectAll("circle.capital-marker")
         .data(ITALIAN_CAPITALS)
         .enter()
         .append("circle")
-        .attr("class", "capital-circle")
-        .attr("r", 7)
+        .attr("class", "capital-marker")
+        .attr("id", d => `target-${d.id}`)
         .attr("cx", d => projection(d.coords)[0])
         .attr("cy", d => projection(d.coords)[1])
-        .attr("id", d => "target-" + d.id)
-        .on("click", (e, d) => handleTargetClick(d.id, e.target));
+        .attr("r", 5.5)
+        .attr("fill", "#f59e0b")
+        .attr("stroke", "#090a0f")
+        .on("click", (e, d) => handleGuess(d.id));
 
       resetZoom();
     }
 
-    // Render World / Continental Game
+    // Modalità Nazioni (Europa e Mondo)
     async function renderWorldMap(mode) {
       gMap.selectAll("*").remove();
       const rect = svg.node().getBoundingClientRect();
@@ -591,85 +679,66 @@
 
       let features = topojson.feature(cachedWorldData, cachedWorldData.objects.countries).features;
 
-      // Continental ISO Partition Map
-      const continentCodes = {
-        europe: ["008","020","040","056","100","191","203","208","233","246","250","276","300","348","352","372","380","428","440","442","498","499","528","578","616","620","642","643","688","703","705","724","752","756","804","807","826"],
-        asia: ["004","050","064","104","116","156","356","360","364","368","376","392","398","400","408","410","414","417","418","422","458","462","496","512","524","586","608","634","682","702","760","762","764","792","795","860","704"],
-        africa: ["012","024","120","132","178","204","262","288","324","384","404","430","434","478","504","508","516","562","566","686","710","728","729","768","788","800","818","834","894"],
-        americas: ["028","032","068","076","124","152","170","188","192","218","222","254","320","332","340","388","484","558","591","600","604","740","840","858","862"],
-        oceania: ["036","554","598","090","242","296","583","584","585"]
-      };
+      // Lista completa e verificata ISO Europa (inclusi Balcani, Grecia, Microstati)
+      const europeIso = new Set([
+        "008","020","040","056","070","100","112","191","196","203","208","233","246","250",
+        "276","300","348","352","372","380","428","438","440","442","470","498","492","499",
+        "528","578","616","620","642","674","688","703","705","724","752","756","804","807","826","-99"
+      ]);
 
-      if (mode !== "world" && continentCodes[mode]) {
-        const allowed = new Set(continentCodes[mode]);
+      if (mode === "europe") {
+        features = features.filter(f => europeIso.has(String(f.id).padStart(3, "0")) || europeIso.has(String(f.id)));
+      } else if (mode !== "world") {
+        // Altri continenti
+        const continentCodes = {
+          asia: ["004","050","064","104","116","156","356","360","364","368","376","392","398","400","408","410","414","417","418","422","458","462","496","512","524","586","608","634","682","702","760","762","764","792","795","860","704"],
+          africa: ["012","024","120","132","178","204","262","288","324","384","404","430","434","478","504","508","516","562","566","686","710","728","729","768","788","800","818","834","894"],
+          americas: ["028","032","068","076","124","152","170","188","192","218","222","254","320","332","340","388","484","558","591","600","604","740","840","858","862"],
+          oceania: ["036","554","598","090","242","296","583","584","585"]
+        };
+        const allowed = new Set(continentCodes[mode] || []);
         features = features.filter(f => allowed.has(String(f.id).padStart(3, "0")));
       }
 
-      // Name mappings for key countries
-      const nameAtlas = {
-        "380": { it: "Italia", en: "Italy" },
-        "250": { it: "Francia", en: "France" },
-        "276": { it: "Germania", en: "Germany" },
-        "724": { it: "Spagna", en: "Spain" },
-        "826": { it: "Regno Unito", en: "United Kingdom" },
-        "756": { it: "Svizzera", en: "Switzerland" },
-        "040": { it: "Austria", en: "Austria" },
-        "620": { it: "Portogallo", en: "Portugal" },
-        "300": { it: "Grecia", en: "Greece" },
-        "528": { it: "Paesi Bassi", en: "Netherlands" },
-        "056": { it: "Belgio", en: "Belgium" },
-        "616": { it: "Polonia", en: "Poland" },
-        "752": { it: "Svezia", en: "Sweden" },
-        "578": { it: "Norvegia", en: "Norway" },
-        "246": { it: "Finlandia", en: "Finland" },
-        "804": { it: "Ucraina", en: "Ukraine" },
-        "643": { it: "Russia", en: "Russia" },
-        "792": { it: "Turchia", en: "Turkey" },
-        "840": { it: "Stati Uniti", en: "United States" },
-        "124": { it: "Canada", en: "Canada" },
-        "484": { it: "Messico", en: "Mexico" },
-        "076": { it: "Brasile", en: "Brazil" },
-        "032": { it: "Argentina", en: "Argentina" },
-        "156": { it: "Cina", en: "China" },
-        "392": { it: "Giappone", en: "Japan" },
-        "356": { it: "India", en: "India" },
-        "036": { it: "Australia", en: "Australia" },
-        "818": { it: "Egitto", en: "Egypt" },
-        "710": { it: "Sudafrica", en: "South Africa" }
-      };
-
-      const projection = d3.geoMercator().fitExtent([[20, 80], [width - 20, height - 30]], { type: "FeatureCollection", features: features });
+      // Proiezione con padding ideale
+      const projection = d3.geoMercator().fitExtent([[20, 80], [width - 20, height - 30]], {
+        type: "FeatureCollection",
+        features: features
+      });
       const pathGenerator = d3.geoPath().projection(projection);
 
-      activeTargets = [];
+      queue = [];
       features.forEach(f => {
-        const idStr = String(f.id).padStart(3, "0");
-        const entry = nameAtlas[idStr] || { it: f.properties.name || "Territorio " + idStr, en: f.properties.name || "Territory " + idStr };
-        activeTargets.push({
-          id: idStr,
-          name_it: entry.it,
-          name_en: entry.en
+        const id = String(f.id).padStart(3, "0");
+        const meta = COUNTRY_NAMES[id] || { it: f.properties?.name || id, en: f.properties?.name || id };
+        queue.push({
+          id: id,
+          it: meta.it,
+          en: meta.en
         });
       });
 
-      totalTargetCount = activeTargets.length;
+      // Mescola la coda di gioco
+      queue.sort(() => Math.random() - 0.5);
+      totalTargetCount = queue.length;
 
+      // Rendering confini vettoriali ad alta definizione
       gMap.selectAll("path.land")
         .data(features)
         .enter()
         .append("path")
         .attr("class", "land")
+        .attr("id", d => `target-${String(d.id).padStart(3, "0")}`)
         .attr("d", pathGenerator)
-        .attr("id", d => "target-" + String(d.id).padStart(3, "0"))
-        .on("click", (e, d) => handleTargetClick(String(d.id).padStart(3, "0"), e.target));
+        .on("click", (e, d) => handleGuess(String(d.id).padStart(3, "0")));
 
       resetZoom();
     }
 
-    // Logic for Turns & Validation
     function initGameStats() {
       scoreErrors = 0;
       scoreCompleted = 0;
+      isProcessingGuess = false;
       document.getElementById("stat-errors").innerText = "0";
       document.getElementById("stat-progress").innerText = `0/${totalTargetCount}`;
 
@@ -682,35 +751,51 @@
         document.getElementById("stat-timer").innerText = `${m}:${s}`;
       }, 1000);
 
-      pickNextTarget();
+      nextTarget();
     }
 
-    function pickNextTarget() {
-      if (activeTargets.length === 0) {
+    function nextTarget() {
+      if (queue.length === 0) {
         endGame();
         return;
       }
-      const idx = Math.floor(Math.random() * activeTargets.length);
-      currentTarget = activeTargets[idx];
-      document.getElementById("target-name").innerText = currentTarget["name_" + currentLang];
+      currentTarget = queue.shift();
+      document.getElementById("target-name").innerText = currentTarget[currentLang];
+      isProcessingGuess = false;
     }
 
-    function handleTargetClick(id, element) {
-      if (!currentTarget) return;
+    // Regola originale: un tentativo. Se sbagli si accende di blu per 2.5s e poi si va avanti.
+    function handleGuess(clickedId) {
+      if (!currentTarget || isProcessingGuess) return;
 
-      if (id === currentTarget.id) {
-        // Correct
-        element.classList.add("correct");
+      const clickedEl = document.getElementById(`target-${clickedId}`);
+      const correctEl = document.getElementById(`target-${currentTarget.id}`);
+
+      if (clickedId === currentTarget.id) {
+        // Risposta esatta
+        if (clickedEl) clickedEl.classList.add("correct");
         scoreCompleted++;
-        activeTargets = activeTargets.filter(t => t.id !== id);
         document.getElementById("stat-progress").innerText = `${scoreCompleted}/${totalTargetCount}`;
-        pickNextTarget();
+        nextTarget();
       } else {
-        // Mistake
+        // Errore: lampeggia di rosso l'errore, evidenzia la soluzione corretta in blu per 2.5s
+        isProcessingGuess = true;
         scoreErrors++;
         document.getElementById("stat-errors").innerText = scoreErrors;
-        element.classList.add("wrong-flash");
-        setTimeout(() => element.classList.remove("wrong-flash"), 450);
+
+        if (clickedEl) {
+          clickedEl.classList.add("wrong-flash");
+          setTimeout(() => clickedEl.classList.remove("wrong-flash"), 400);
+        }
+
+        if (correctEl) {
+          correctEl.classList.add("revealed");
+        }
+
+        setTimeout(() => {
+          if (correctEl) correctEl.classList.remove("revealed");
+          nextTarget();
+        }, 2500);
       }
     }
 
@@ -725,15 +810,14 @@
       document.getElementById("end-modal").style.display = "flex";
     }
 
-    // Window Resize Handling
     window.addEventListener("resize", () => {
-      if (!document.getElementById("menu-modal").style.display || document.getElementById("menu-modal").style.display === "none") {
+      const modal = document.getElementById("menu-modal");
+      if (modal.style.display === "none") {
         if (currentMode === "italy") renderItalyMap();
         else renderWorldMap(currentMode);
       }
     });
 
-    // Initialize labels on first load
     updateLanguageUI();
   </script>
 </body>
